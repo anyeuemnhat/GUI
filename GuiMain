@@ -7,7 +7,7 @@ if not gui:GetAttribute("LexMusicV1") then
  gui:SetAttribute("LexMusicV1",true)
 
  local songs={
- {name="chill vl",id="1848354536"}
+ {name="chill vl",id="125102819403962"}
 }
 
  local selected,opened,alive,requested,ticket=1,false,true,false,0
