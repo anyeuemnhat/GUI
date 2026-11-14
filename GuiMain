@@ -7,8 +7,8 @@ if not gui:GetAttribute("LexMusicV1") then
  gui:SetAttribute("LexMusicV1",true)
 
  local songs={
-  {name="Mùa thu và lời xin lỗi",id="120649823040872"}
- }
+ {name="Sao mình chưa nắm tay nhau",id="77763817292398"}
+}
 
  local selected,opened,alive,requested,ticket=1,false,true,false,0
 
