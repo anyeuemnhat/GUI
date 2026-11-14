@@ -749,4 +749,289 @@ local thumb = new("Frame", {
 }, track)
 rounded(thumb, 7)
 
-local sliderInp
+local sliderInput
+
+local function pointer(input)
+    return input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch
+end
+
+local function moved(input, held)
+    return input == held
+        or (
+            held.UserInputType == Enum.UserInputType.MouseButton1
+            and input.UserInputType == Enum.UserInputType.MouseMovement
+        )
+end
+
+local function released(input, held)
+    return input == held
+        or (
+            held.UserInputType == Enum.UserInputType.MouseButton1
+            and input.UserInputType == Enum.UserInputType.MouseButton1
+        )
+end
+
+local function updateSlider(input)
+    if track.AbsoluteSize.X <= 0 then return end
+
+    local ratio = math.clamp(
+        (input.Position.X - track.AbsolutePosition.X)
+            / track.AbsoluteSize.X,
+        0, 1
+    )
+    local value = math.floor(ratio * 90 + 0.5)
+
+    fill.Size = UDim2.new(value / 90, 0, 1, 0)
+    thumb.Position = UDim2.fromScale(value / 90, 0.5)
+    sliderValue.Text = tostring(value)
+    applyGlass(value)
+end
+
+on(hit.InputBegan, function(input)
+    if pointer(input) then
+        sliderInput = input
+        updateSlider(input)
+    end
+end)
+
+on(Input.InputChanged, function(input)
+    if sliderInput and moved(input, sliderInput) then
+        updateSlider(input)
+    end
+end)
+
+on(Input.InputEnded, function(input)
+    if sliderInput and released(input, sliderInput) then
+        sliderInput = nil
+    end
+end)
+
+on(Input.WindowFocusReleased, function()
+    sliderInput = nil
+end)
+
+local inviteRow = row(pages.Config.left, 85)
+
+text(
+    inviteRow, "Discord Invite", 17,
+    17, 10, 350, 25, C.text, Enum.Font.GothamBold
+)
+
+local inviteBox = new("TextBox", {
+    Position = UDim2.fromOffset(17, 43),
+    Size = UDim2.new(1, -34, 0, 28),
+    BackgroundTransparency = 1,
+    Text = DISCORD,
+    ClearTextOnFocus = false,
+    TextColor3 = C.accent,
+    Font = Enum.Font.Gotham,
+    TextSize = 14,
+}, inviteRow)
+
+on(inviteBox.FocusLost, function()
+    inviteBox.Text = DISCORD
+end)
+
+stat(pages.Config.right, "Logo / nền", "Custom")
+stat(pages.Config.right, "Giao diện", "Purple")
+
+selectTab = function(name)
+    for pageName, page in pairs(pages) do
+        page.frame.Visible = pageName == name
+    end
+
+    for pageName, entry in pairs(entries) do
+        local active = pageName == name
+
+        entry.button.BackgroundTransparency =
+            active and (0.1 + glassValue / 100 * 0.35) or 1
+
+        entry.outline.Transparency = active and 0.05 or 0.8
+        entry.outline.Thickness = active and 2 or 1
+        entry.caption.TextColor3 = active and C.text or C.muted
+    end
+
+    title.Text = name
+    subtitle.Text = entries[name].description
+    titleGlyph.Text = entries[name].glyph
+    titleImage.Image = "rbxassetid://" .. ASSETS[entries[name].key]
+    titleImage.ImageTransparency = titleImage.IsLoaded and 0 or 1
+    titleGlyph.Visible = not titleImage.IsLoaded
+end
+
+on(discordButton.Activated, function()
+    local copy =
+        type(setclipboard) == "function" and setclipboard
+        or type(toclipboard) == "function" and toclipboard
+
+    if copy then
+        local ok, result = pcall(copy, DISCORD)
+
+        if ok and result ~= false then
+            discordButton.Text = "Invite copied!"
+
+            task.delay(2, function()
+                if discordButton.Parent then
+                    discordButton.Text = "Discord  /  Copy invite"
+                end
+            end)
+            return
+        end
+    end
+
+    selectTab("Config")
+    inviteBox:CaptureFocus()
+    inviteBox.SelectionStart = 1
+    inviteBox.CursorPosition = #DISCORD + 1
+end)
+
+local footer = text(
+    window, "LEX HUB  •  GIAO DIỆN XEM TRƯỚC", 10,
+    SIDE + 18, H - 23, 600, 17, C.muted
+)
+footer.ZIndex = 4
+
+local dock = new("ImageButton", {
+    Name = "OpenLexHub",
+    Size = UDim2.fromOffset(50, 50),
+    Image = "rbxassetid://" .. ASSETS.Logo,
+    ScaleType = Enum.ScaleType.Fit,
+    BackgroundColor3 = C.base,
+    BackgroundTransparency = 0.1,
+    BorderSizePixel = 0,
+    ZIndex = 30,
+}, gui)
+
+rounded(dock, 14)
+glow(dock, 14)
+
+local function viewport()
+    local camera = workspace.CurrentCamera
+    return camera and camera.ViewportSize or Vector2.new(1280, 720)
+end
+
+local function clampPosition(object, x, y)
+    local view = viewport()
+    local width = object == window and W * scale.Scale or 50
+    local height = object == window and H * scale.Scale or 50
+    local ax, ay = object.AnchorPoint.X, object.AnchorPoint.Y
+
+    x = math.clamp(
+        x,
+        width * ax + 6,
+        math.max(width * ax + 6, view.X - width * (1 - ax) - 6)
+    )
+    y = math.clamp(
+        y,
+        height * ay + 6,
+        math.max(height * ay + 6, view.Y - height * (1 - ay) - 6)
+    )
+
+    object.Position = UDim2.fromOffset(x, y)
+end
+
+local placed = false
+
+local function fit()
+    local view = viewport()
+
+    scale.Scale = math.max(
+        0.1,
+        math.min(1, (view.X - 20) / W, (view.Y - 20) / H)
+    )
+
+    if not placed then
+        window.Position = UDim2.fromOffset(view.X / 2, view.Y / 2)
+        dock.Position = UDim2.fromOffset(
+            12, math.max(8, view.Y / 2 - 25)
+        )
+        placed = true
+    end
+
+    clampPosition(
+        window, window.Position.X.Offset, window.Position.Y.Offset
+    )
+    clampPosition(
+        dock, dock.Position.X.Offset, dock.Position.Y.Offset
+    )
+end
+
+local function watchCamera()
+    if cameraConnection then
+        cameraConnection:Disconnect()
+    end
+
+    if workspace.CurrentCamera then
+        cameraConnection = workspace.CurrentCamera
+            :GetPropertyChangedSignal("ViewportSize")
+            :Connect(fit)
+    end
+
+    fit()
+end
+
+on(workspace:GetPropertyChangedSignal("CurrentCamera"), watchCamera)
+watchCamera()
+
+local function toggleWindow()
+    window.Visible = not window.Visible
+end
+
+on(minimize.Activated, toggleWindow)
+on(close.Activated, function() gui:Destroy() end)
+
+on(Input.InputBegan, function(input, processed)
+    if not processed
+        and not Input:GetFocusedTextBox()
+        and input.KeyCode == Enum.KeyCode.RightShift then
+        toggleWindow()
+    end
+end)
+
+local function draggable(object, handle, tap)
+    local held, start, origin, dragged
+
+    on(handle.InputBegan, function(input)
+        if pointer(input) then
+            held = input
+            start = input.Position
+            origin = object.Position
+            dragged = false
+        end
+    end)
+
+    on(Input.InputChanged, function(input)
+        if not held or not moved(input, held) then return end
+
+        local delta = input.Position - start
+        if delta.Magnitude > 5 then dragged = true end
+
+        if dragged then
+            clampPosition(
+                object,
+                origin.X.Offset + delta.X,
+                origin.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    on(Input.InputEnded, function(input)
+        if held and released(input, held) then
+            held = nil
+            if tap and not dragged then tap() end
+        end
+    end)
+
+    on(Input.WindowFocusReleased, function()
+        held = nil
+    end)
+end
+
+draggable(window, dragHandle)
+draggable(dock, dock, toggleWindow)
+
+applyGlass(glassValue)
+selectTab("Quests")
+
+print("[Lex Hub] Purple UI ready.")
