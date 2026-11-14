@@ -1,251 +1,247 @@
--- Lex Hub: additional appearance settings
-if not gui:GetAttribute("LexAppearanceV2") then
- gui:SetAttribute("LexAppearanceV2",true)
- local INVITE="https://discord.gg/vuWaN9cPN"
- local shape="Bo góc"
- local opacity=60
- local shapeButtons={}
- local dockCorner=dock:FindFirstChildOfClass("UICorner")
- if not dockCorner then dockCorner=new("UICorner",{},dock) end
+repeat task.wait() until game:IsLoaded()
 
- clampPosition=function(object,x,y)
-  local v=viewport()
-  local w=object==window and W*scale.Scale or object.Size.X.Offset
-  local h=object==window and H*scale.Scale or object.Size.Y.Offset
-  local ax,ay=object.AnchorPoint.X,object.AnchorPoint.Y
-  object.Position=UDim2.fromOffset(
-   math.clamp(x,w*ax+8,math.max(w*ax+8,v.X-w*(1-ax)-8)),
-   math.clamp(y,h*ay+8,math.max(h*ay+8,v.Y-h*(1-ay)-8)))
- end
+local ROOT="https://raw.githubusercontent.com/anyeuemnhat/GUI/"
 
- for _,row in ipairs(pages.Settings:GetChildren()) do
-  for _,child in ipairs(row:GetChildren()) do
-   if child:IsA("TextLabel") and child.Text=="Background Visibility" then
-    row.Visible=false
-   end
-  end
- end
+local music=[==[
+if not gui:GetAttribute("LexMusicV1") then
+ gui:SetAttribute("LexMusicV1",true)
 
- section(pages.Settings,"Icon nổi / Nút mở GUI")
- local shapes=card(pages.Settings,96)
- label(shapes,"Hình dạng icon",16,
-  UDim2.fromOffset(18,10),UDim2.new(1,-36,0,24))
+ local songs={
+  {name="Mùa thu và lời xin lỗi",id="120649823040872"}
+ }
 
- local dimensions=card(pages.Settings,132)
- label(dimensions,"Kích thước: Rộng x Cao (pixel)",16,
-  UDim2.fromOffset(18,10),UDim2.new(1,-36,0,24))
+ local selected,opened,alive,requested,ticket=1,false,true,false,0
 
- local sizeBox=new("TextBox",{
-  Name="IconSizeInput",
-  Position=UDim2.fromOffset(18,46),
-  Size=UDim2.new(1,-168,0,36),
+ local sound=new("Sound",{
+  Name="LexHubMusic",
+  SoundId="rbxassetid://"..songs[1].id,
+  Volume=.5,
+  Looped=false,
+ },game:GetService("SoundService"))
+
+ gui.Destroying:Connect(function()
+  alive=false
+  requested=false
+  ticket=ticket+1
+  sound:Stop()
+  sound:Destroy()
+ end)
+
+ local heading=label(pages.Settings,"Nghe nhạc",16,
+  UDim2.new(),UDim2.new(1,0,0,30),C.accent)
+ heading.LayoutOrder=-20
+
+ local panel=card(pages.Settings,224)
+ panel.Name="LexMusicPanel"
+ panel.LayoutOrder=-19
+ panel.BackgroundTransparency=.6
+
+ label(panel,"Danh sách bài nhạc",14,
+  UDim2.fromOffset(18,12),UDim2.new(1,-36,0,22),C.muted)
+
+ local selector=new("TextButton",{
+  Name="LexMusicSelector",
+  Position=UDim2.fromOffset(18,43),
+  Size=UDim2.new(1,-36,0,40),
   BackgroundColor3=C.base,
+  BackgroundTransparency=.12,
   BorderSizePixel=0,
-  Text="52 x 52",
-  PlaceholderText="80 x 60",
+  Text=songs[1].name.."  v",
+  TextSize=15,
   TextColor3=C.text,
-  TextSize=16,
   Font=Enum.Font.Gotham,
-  ClearTextOnFocus=false,
- },dimensions)
- corner(sizeBox,9)
+ },panel)
+ corner(selector,9)
+ border(selector)
 
- local applyButton=new("TextButton",{
-  Name="ApplyIconSize",
-  Position=UDim2.new(1,-132,0,46),
-  Size=UDim2.fromOffset(114,36),
-  BackgroundColor3=C.card,
+ local listHeight=math.min(#songs*42+8,176)
+
+ local list=new("ScrollingFrame",{
+  Name="LexMusicList",
+  Position=UDim2.fromOffset(18,89),
+  Size=UDim2.new(1,-36,0,listHeight),
+  BackgroundColor3=C.base,
+  BackgroundTransparency=.08,
   BorderSizePixel=0,
-  Text="Áp dụng",
-  TextColor3=C.accent,
-  TextSize=14,
-  Font=Enum.Font.GothamBold,
-  AutoButtonColor=true,
- },dimensions)
- corner(applyButton,9)
- border(applyButton)
+  Visible=false,
+  CanvasSize=UDim2.new(),
+  AutomaticCanvasSize=Enum.AutomaticSize.Y,
+  ScrollBarThickness=2,
+  ScrollBarImageColor3=C.accent,
+  ScrollingDirection=Enum.ScrollingDirection.Y,
+ },panel)
+ corner(list,9)
 
- local sizeNote=label(dimensions,
-  "24–160 px. Tròn/Vuông dùng hai cạnh bằng nhau.",12,
-  UDim2.fromOffset(18,96),UDim2.new(1,-36,0,22),C.muted)
+ new("UIListLayout",{
+  Padding=UDim.new(0,4),
+  SortOrder=Enum.SortOrder.LayoutOrder,
+ },list)
 
- local function applySize(nextShape)
-  local value=sizeBox.Text:gsub("×","x")
-  local a,b=value:match("^%s*(%d+)%s*[xX]%s*(%d+)%s*$")
+ new("UIPadding",{
+  PaddingTop=UDim.new(0,4),
+  PaddingLeft=UDim.new(0,4),
+  PaddingRight=UDim.new(0,4),
+  PaddingBottom=UDim.new(0,4),
+ },list)
 
-  if not a then
-   sizeNote.Text="Nhập theo mẫu 80 x 60 rồi bấm Áp dụng."
-   return
-  end
+ local controls=new("Frame",{
+  Position=UDim2.fromOffset(18,101),
+  Size=UDim2.new(1,-36,0,38),
+  BackgroundTransparency=1,
+ },panel)
 
-  local w=math.clamp(tonumber(a),24,160)
-  local h=math.clamp(tonumber(b),24,160)
-  shape=nextShape or shape
-  if shape~="Bo góc" then h=w end
+ local status=label(panel,"Chưa phát nhạc.",13,
+  UDim2.fromOffset(18,152),UDim2.new(1,-36,0,54),C.muted)
+ status.TextWrapped=true
+ status.TextTruncate=Enum.TextTruncate.None
+ status.TextYAlignment=Enum.TextYAlignment.Top
 
-  dock.Size=UDim2.fromOffset(w,h)
-  dockCorner.CornerRadius=
-   shape=="Tròn" and UDim.new(.5,0)
-   or shape=="Vuông" and UDim.new(0,0)
-   or UDim.new(0,math.floor(math.min(w,h)*.22))
-
-  sizeBox.Text=w.." x "..h
-  sizeNote.Text="Đã áp dụng: "..w.." x "..h.." px / "..shape
-
-  for name,b in pairs(shapeButtons) do
-   b.BackgroundColor3=name==shape and C.accent or C.card
-   b.TextColor3=name==shape and C.base or C.text
-  end
-
-  clampPosition(dock,dock.Position.X.Offset,dock.Position.Y.Offset)
+ local function layout()
+  local extra=opened and listHeight+8 or 0
+  list.Visible=opened
+  panel.Size=UDim2.new(1,-2,0,224+extra)
+  controls.Position=UDim2.fromOffset(18,101+extra)
+  status.Position=UDim2.fromOffset(18,152+extra)
  end
 
- for i,name in ipairs({"Tròn","Vuông","Bo góc"}) do
-  local b=new("TextButton",{
-   Name="IconShape"..i,
-   Position=UDim2.new((i-1)/3,12,0,46),
-   Size=UDim2.new(1/3,-20,0,34),
+ local function stop(message)
+  ticket=ticket+1
+  requested=false
+  sound:Stop()
+  status.Text=message or "Đã dừng. Bấm Phát để nghe lại từ đầu."
+ end
+
+ on(selector.Activated,function()
+  opened=not opened
+  layout()
+ end)
+
+ for i,song in ipairs(songs) do
+  local option=new("TextButton",{
+   Name="LexMusicOption"..i,
+   LayoutOrder=i,
+   Size=UDim2.new(1,-3,0,38),
    BackgroundColor3=C.card,
+   BackgroundTransparency=.2,
    BorderSizePixel=0,
-   Text=name,
+   Text=song.name,
    TextColor3=C.text,
    TextSize=14,
    Font=Enum.Font.Gotham,
-   AutoButtonColor=true,
-  },shapes)
+  },list)
+  corner(option,7)
 
-  corner(b,9)
-  shapeButtons[name]=b
-  on(b.Activated,function() applySize(name) end)
- end
-
- on(applyButton.Activated,function() applySize() end)
- on(sizeBox.FocusLost,function(enter)
-  if enter then applySize() end
- end)
-
- section(pages.Settings,"Discord")
- local community=card(pages.Settings,96)
-
- label(community,"Discord của Lex Hub",16,
-  UDim2.fromOffset(18,10),UDim2.new(1,-36,0,24))
-
- local linkBox=new("TextBox",{
-  Name="DiscordInviteInput",
-  Position=UDim2.fromOffset(18,46),
-  Size=UDim2.new(1,-168,0,34),
-  BackgroundTransparency=1,
-  Text=INVITE,
-  ClearTextOnFocus=false,
-  TextColor3=C.accent,
-  TextSize=14,
-  Font=Enum.Font.Gotham,
- },community)
-
- local copyButton=new("TextButton",{
-  Name="CopyDiscordInvite",
-  Position=UDim2.new(1,-132,0,46),
-  Size=UDim2.fromOffset(114,34),
-  BackgroundColor3=C.card,
-  BorderSizePixel=0,
-  Text="Sao chép link",
-  TextColor3=C.accent,
-  TextSize=13,
-  Font=Enum.Font.GothamBold,
- },community)
- corner(copyButton,9)
- border(copyButton)
-
- on(linkBox.FocusLost,function()
-  linkBox.Text=INVITE
- end)
-
- on(copyButton.Activated,function()
-  local copy=
-   type(setclipboard)=="function" and setclipboard
-   or type(toclipboard)=="function" and toclipboard
-
-  if copy then
-   local ok,result=pcall(copy,INVITE)
-   if ok and result~=false then
-    copyButton.Text="Đã sao chép!"
-    task.delay(2,function()
-     if copyButton.Parent then
-      copyButton.Text="Sao chép link"
-     end
-    end)
-    return
+  on(option.Activated,function()
+   if selected~=i then
+    stop("Đã chọn: "..song.name)
+    selected=i
+    sound.SoundId="rbxassetid://"..song.id
    end
-  end
-
-  linkBox:CaptureFocus()
-  linkBox.SelectionStart=1
-  linkBox.CursorPosition=#INVITE+1
- end)
-
- local function navOpacity()
-  for _,entry in pairs(entries) do
-   entry.button.BackgroundTransparency=
-    entry.marker.Visible and opacity/100 or 1
-  end
- end
-
- local function panels(value)
-  opacity=value
-  sidebar.BackgroundTransparency=value/100
-  brand.BackgroundTransparency=value/100
-  search.BackgroundTransparency=value/100
-
-  for _,page in pairs(pages) do
-   for _,row in ipairs(page:GetChildren()) do
-    if row:IsA("Frame") or row:IsA("TextButton") then
-     row.BackgroundTransparency=value/100
-    end
-   end
-  end
-
-  navOpacity()
- end
-
- local originalSelect=selectTab
- selectTab=function(name)
-  originalSelect(name)
-  navOpacity()
- end
-
- local image=window:FindFirstChild("Background")
- if image then image.ImageTransparency=0 end
-
- section(pages.Settings,"Ảnh nền và độ trong")
- slider(pages.Settings,"Độ trong của bảng (%)",
-  0,90,60,panels)
-
- slider(pages.Settings,"Độ sáng ảnh nền (%)",
-  0,100,65,function(value)
-   shade.BackgroundTransparency=value/100
+   selector.Text=song.name.."  v"
+   opened=false
+   layout()
   end)
-
- panels(opacity)
-
- for _,row in ipairs(pages.Status:GetChildren()) do
-  local playerRow=false
-
-  for _,child in ipairs(row:GetChildren()) do
-   if child:IsA("TextLabel") and child.Text=="Player" then
-    playerRow=true
-   end
-  end
-
-  if playerRow then
-   for _,child in ipairs(row:GetChildren()) do
-    if child:IsA("TextLabel") and child.Position.Y.Offset==44 then
-     child.Text="@"..Players.LocalPlayer.Name
-    end
-   end
-  end
  end
 
- applySize()
- print("LEX_APPEARANCE_SETTINGS_READY")
+ local function button(name,title,index)
+  local b=new("TextButton",{
+   Name=name,
+   Position=UDim2.new((index-1)/3,0,0,0),
+   Size=UDim2.new(1/3,-7,1,0),
+   BackgroundColor3=C.card,
+   BackgroundTransparency=.12,
+   BorderSizePixel=0,
+   Text=title,
+   TextColor3=C.text,
+   TextSize=14,
+   Font=Enum.Font.GothamBold,
+  },controls)
+  corner(b,9)
+  border(b)
+  return b
+ end
+
+ local play=button("LexMusicPlay","Phát",1)
+ local halt=button("LexMusicStop","Dừng",2)
+ local loop=button("LexMusicLoop","Lặp: Tắt",3)
+
+ on(play.Activated,function()
+  if requested and sound.Playing then return end
+
+  requested=true
+  ticket=ticket+1
+  local current=ticket
+
+  local ok,err=pcall(function() sound:Play() end)
+  if not ok then
+   requested=false
+   status.Text="Không phát được: "..tostring(err)
+   return
+  end
+
+  status.Text=sound.IsLoaded
+   and ("Đang phát: "..songs[selected].name)
+   or "Đang tải nhạc..."
+
+  task.delay(25,function()
+   if alive and requested and ticket==current and not sound.IsLoaded then
+    stop("Chưa tải được audio. Kiểm tra trạng thái/quyền dùng audio trong game hoặc thử lại.")
+   end
+  end)
+ end)
+
+ on(halt.Activated,function()
+  stop()
+ end)
+
+ on(loop.Activated,function()
+  sound.Looped=not sound.Looped
+  loop.Text=sound.Looped and "Lặp: Bật" or "Lặp: Tắt"
+  loop.BackgroundColor3=sound.Looped and C.accent or C.card
+  loop.TextColor3=sound.Looped and C.base or C.text
+ end)
+
+ on(sound.Loaded,function()
+  if alive and requested and sound.IsLoaded then
+   status.Text="Đang phát: "..songs[selected].name
+  end
+ end)
+
+ on(sound.Ended,function()
+  if alive and not sound.Looped then
+   requested=false
+   ticket=ticket+1
+   status.Text="Đã hết bài. Bấm Phát để nghe lại."
+  end
+ end)
+
+ layout()
+ print("LEX_MUSIC_READY")
 end
--- END LEX APPEARANCE SETTINGS
+]==]
+
+local success,err=pcall(function()
+ local base=game:HttpGet(
+  ROOT.."a0c08548318a84b4fd07014db7caedd6c7c86e38/GuiMain"
+ )
+ local settings=game:HttpGet(
+  ROOT.."c49f776d74a651790495909619ef674f52655e9a/GuiMain"
+ )
+
+ local run,compileError=loadstring(
+  base.."\n"..settings.."\n"..music
+ )
+ assert(run,compileError)
+ run()
+end)
+
+if not success then
+ warn("[Lex Hub] "..tostring(err))
+ pcall(function()
+  game:GetService("StarterGui"):SetCore("SendNotification",{
+   Title="Lex Hub: error",
+   Text=tostring(err):sub(1,150),
+   Duration=12,
+  })
+ end)
+end
