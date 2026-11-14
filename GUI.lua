@@ -1,26 +1,44 @@
--- Lex Hub: UI only. No gameplay functions.
+-- Lex Hub / Purple UI. All controls are interface previews only.
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
 local Input = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local Tweens = game:GetService("TweenService")
 
 repeat task.wait() until Players.LocalPlayer
+local player = Players.LocalPlayer
 
-local LOGO = "rbxassetid://92599590358566"
-local BACKGROUND = "rbxassetid://102363221886944"
-local W, H, SIDE = 900, 610, 260
-
-local C = {
-    base = Color3.fromRGB(11, 16, 24),
-    card = Color3.fromRGB(23, 31, 43),
-    edge = Color3.fromRGB(47, 62, 80),
-    text = Color3.fromRGB(230, 236, 245),
-    muted = Color3.fromRGB(145, 163, 183),
-    accent = Color3.fromRGB(132, 190, 226),
+local ASSETS = {
+    Logo = "92599590358566",
+    Background = "102363221886944",
+    Home = "132438576251581",
+    Farm = "88690276794955",
+    Combat = "71150385866756",
+    Player = "134885357707164",
+    Teleport = "125206121526268",
+    Race = "81864304157736",
+    Fruit = "120866804192405",
+    Raid = "80890989765473",
+    Sea = "132052609598784",
+    Quests = "102414489086009",
+    Misc = "72730351582941",
+    Config = "102726470936133",
 }
 
-local parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+local DISCORD = "https://discord.gg/vuWaN9cPN"
+local W, H, SIDE = 1280, 720, 226
+
+local C = {
+    base = Color3.fromRGB(22, 12, 39),
+    panel = Color3.fromRGB(39, 22, 61),
+    row = Color3.fromRGB(63, 35, 86),
+    text = Color3.fromRGB(248, 239, 255),
+    muted = Color3.fromRGB(210, 188, 229),
+    accent = Color3.fromRGB(220, 139, 255),
+    edge = Color3.fromRGB(166, 90, 206),
+}
+
+local parent = player:WaitForChild("PlayerGui")
 
 if type(gethui) == "function" then
     local ok, hidden = pcall(gethui)
@@ -41,50 +59,74 @@ local function new(class, props, owner)
     return object
 end
 
-local function corner(object, radius)
+local function rounded(object, radius)
     new("UICorner", {
         CornerRadius = UDim.new(0, radius or 12),
     }, object)
 end
 
-local function border(object, color)
-    new("UIStroke", {
+local function stroke(object, color, thickness, transparency)
+    return new("UIStroke", {
         Color = color or C.edge,
-        Thickness = 1,
-        Transparency = 0.25,
+        Thickness = thickness or 1,
+        Transparency = transparency or 0.25,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
     }, object)
 end
 
-local function label(owner, text, size, position, dimensions, color)
+local function glow(object, radius)
+    for _, layer in ipairs({
+        {5, 0.94},
+        {2.5, 0.82},
+        {1, 0.12},
+    }) do
+        local outline = new("Frame", {
+            Name = "GlowOutline",
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            BorderSizePixel = 0,
+        }, object)
+
+        rounded(outline, radius or 16)
+        stroke(outline, C.accent, layer[1], layer[2])
+    end
+end
+
+local function text(owner, value, size, x, y, width, height, color, font)
     return new("TextLabel", {
         BackgroundTransparency = 1,
-        Text = text,
-        Font = Enum.Font.Gotham,
+        Text = value,
         TextSize = size,
+        Font = font or Enum.Font.Gotham,
         TextColor3 = color or C.text,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextTruncate = Enum.TextTruncate.AtEnd,
-        Position = position,
-        Size = dimensions,
+        Position = UDim2.fromOffset(x, y),
+        Size = UDim2.fromOffset(width, height),
     }, owner)
 end
 
-local function animate(object, props)
-    TweenService:Create(
-        object,
-        TweenInfo.new(0.16, Enum.EasingStyle.Quad),
-        props
-    ):Play()
-end
-
-local connections = {}
+local connections, glassTargets = {}, {}
 local cameraConnection
+local glassValue = 45
 
 local function on(signal, callback)
     local connection = signal:Connect(callback)
     connections[#connections + 1] = connection
     return connection
+end
+
+local function glass(object, base, gain)
+    glassTargets[#glassTargets + 1] = {object, base, gain}
+    object.BackgroundTransparency = base + glassValue / 100 * gain
+end
+
+local function tween(object, props)
+    Tweens:Create(
+        object,
+        TweenInfo.new(0.16, Enum.EasingStyle.Quad),
+        props
+    ):Play()
 end
 
 local gui = new("ScreenGui", {
@@ -108,109 +150,71 @@ local window = new("Frame", {
     Name = "Window",
     AnchorPoint = Vector2.new(0.5, 0.5),
     Size = UDim2.fromOffset(W, H),
-    BackgroundColor3 = C.base,
+    BackgroundTransparency = 1,
     BorderSizePixel = 0,
-    ClipsDescendants = true,
 }, gui)
-
-corner(window, 18)
-border(window)
 
 local scale = new("UIScale", {Scale = 1}, window)
 
-new("ImageLabel", {
+local backdrop = new("ImageLabel", {
     Name = "Background",
     BackgroundTransparency = 1,
     Size = UDim2.fromScale(1, 1),
-    Image = BACKGROUND,
-    ImageTransparency = 0.08,
+    Image = "rbxassetid://" .. ASSETS.Background,
+    ImageTransparency = 0.60,
     ScaleType = Enum.ScaleType.Crop,
     ZIndex = 1,
 }, window)
+rounded(backdrop, 18)
 
 local shade = new("Frame", {
     BackgroundColor3 = C.base,
-    BackgroundTransparency = 0.26,
     Size = UDim2.fromScale(1, 1),
     BorderSizePixel = 0,
     ZIndex = 2,
 }, window)
+rounded(shade, 18)
+glass(shade, 0.08, 0.5)
 
 local sidebar = new("Frame", {
-    BackgroundColor3 = C.base,
-    BackgroundTransparency = 0.06,
     Size = UDim2.new(0, SIDE, 1, 0),
+    BackgroundColor3 = C.base,
     BorderSizePixel = 0,
     ZIndex = 3,
 }, window)
-
-new("Frame", {
-    Position = UDim2.new(1, -1, 0, 0),
-    Size = UDim2.new(0, 1, 1, 0),
-    BackgroundColor3 = C.edge,
-    BorderSizePixel = 0,
-}, sidebar)
-
-local brand = new("Frame", {
-    Position = UDim2.fromOffset(14, 16),
-    Size = UDim2.new(1, -28, 0, 96),
-    BackgroundColor3 = Color3.fromRGB(44, 62, 78),
-    BackgroundTransparency = 0.12,
-    BorderSizePixel = 0,
-}, sidebar)
-
-corner(brand, 15)
-border(brand)
+rounded(sidebar, 18)
+glass(sidebar, 0.05, 0.4)
+stroke(sidebar, C.accent, 1, 0.35)
 
 new("ImageLabel", {
+    Position = UDim2.fromOffset(15, 16),
+    Size = UDim2.fromOffset(57, 57),
     BackgroundTransparency = 1,
-    Position = UDim2.fromOffset(12, 17),
-    Size = UDim2.fromOffset(62, 62),
-    Image = LOGO,
+    Image = "rbxassetid://" .. ASSETS.Logo,
     ScaleType = Enum.ScaleType.Fit,
-}, brand)
-
-local brandTitle = label(
-    brand, "Lex Hub", 22,
-    UDim2.fromOffset(86, 24),
-    UDim2.new(1, -96, 0, 27)
-)
-brandTitle.Font = Enum.Font.GothamBold
-
-label(
-    brand, "[ Blox Fruits ]", 13,
-    UDim2.fromOffset(86, 57),
-    UDim2.new(1, -96, 0, 20),
-    C.muted
-)
-
-local search = new("TextBox", {
-    Position = UDim2.fromOffset(14, 126),
-    Size = UDim2.new(1, -28, 0, 44),
-    BackgroundColor3 = C.card,
-    BackgroundTransparency = 0.08,
-    BorderSizePixel = 0,
-    Text = "",
-    PlaceholderText = "Search tabs...",
-    PlaceholderColor3 = C.muted,
-    TextColor3 = C.text,
-    TextSize = 15,
-    Font = Enum.Font.Gotham,
-    ClearTextOnFocus = false,
-    TextXAlignment = Enum.TextXAlignment.Left,
 }, sidebar)
 
-corner(search)
-border(search)
+text(
+    sidebar, "Lex Hub", 34,
+    82, 14, 134, 42,
+    C.text, Enum.Font.Garamond
+)
+text(
+    sidebar, "Blox Fruits Script", 12,
+    83, 59, 135, 20, C.muted
+)
 
-new("UIPadding", {
-    PaddingLeft = UDim.new(0, 15),
-    PaddingRight = UDim.new(0, 12),
-}, search)
+new("Frame", {
+    Position = UDim2.fromOffset(22, 91),
+    Size = UDim2.fromOffset(182, 1),
+    BackgroundColor3 = C.accent,
+    BackgroundTransparency = 0.35,
+    BorderSizePixel = 0,
+}, sidebar)
 
 local nav = new("ScrollingFrame", {
-    Position = UDim2.fromOffset(14, 185),
-    Size = UDim2.new(1, -28, 1, -233),
+    Position = UDim2.fromOffset(17, 105),
+    Size = UDim2.fromOffset(195, 510),
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     CanvasSize = UDim2.new(),
@@ -221,610 +225,528 @@ local nav = new("ScrollingFrame", {
 }, sidebar)
 
 new("UIListLayout", {
-    Padding = UDim.new(0, 8),
+    Padding = UDim.new(0, 5),
     SortOrder = Enum.SortOrder.LayoutOrder,
 }, nav)
 
 new("UIPadding", {
+    PaddingTop = UDim.new(0, 3),
     PaddingBottom = UDim.new(0, 4),
+    PaddingLeft = UDim.new(0, 3),
     PaddingRight = UDim.new(0, 4),
 }, nav)
 
-label(
-    sidebar, "LEX HUB  /  UI PREVIEW", 11,
-    UDim2.new(0, 21, 1, -34),
-    UDim2.new(1, -42, 0, 20),
-    C.muted
+local username = text(
+    sidebar, "@" .. player.Name, 13,
+    20, 626, 185, 22, C.muted
 )
 
-local content = new("Frame", {
-    Position = UDim2.fromOffset(SIDE, 0),
-    Size = UDim2.new(1, -SIDE, 1, 0),
+on(player:GetPropertyChangedSignal("Name"), function()
+    username.Text = "@" .. player.Name
+end)
+
+local discordButton = new("TextButton", {
+    Position = UDim2.fromOffset(20, 665),
+    Size = UDim2.fromOffset(186, 32),
+    BackgroundColor3 = Color3.fromRGB(83, 39, 118),
+    BackgroundTransparency = 0.2,
+    BorderSizePixel = 0,
+    Text = "Discord  /  Copy invite",
+    TextSize = 12,
+    Font = Enum.Font.GothamBold,
+    TextColor3 = C.text,
+    AutoButtonColor = true,
+}, sidebar)
+rounded(discordButton, 10)
+stroke(discordButton, C.accent, 1, 0.2)
+
+local banner = new("ImageLabel", {
+    Position = UDim2.fromOffset(SIDE + 2, 0),
+    Size = UDim2.new(1, -SIDE - 2, 0, 205),
     BackgroundTransparency = 1,
+    Image = "rbxassetid://" .. ASSETS.Background,
+    ScaleType = Enum.ScaleType.Crop,
     ZIndex = 3,
 }, window)
+rounded(banner, 16)
 
-local header = new("Frame", {
-    Position = UDim2.fromOffset(22, 18),
-    Size = UDim2.new(1, -44, 0, 66),
-    BackgroundTransparency = 1,
-}, content)
+local fade = new("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = C.base,
+    BorderSizePixel = 0,
+}, banner)
 
-local title = label(
-    header, "Status", 26,
-    UDim2.fromOffset(0, 0),
-    UDim2.new(1, -110, 0, 32)
-)
-title.Font = Enum.Font.GothamBold
-
-local subtitle = label(
-    header, "View local and server information.", 13,
-    UDim2.fromOffset(0, 39),
-    UDim2.new(1, -10, 0, 20),
-    C.muted
-)
+new("UIGradient", {
+    Rotation = 90,
+    Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.65, 0.85),
+        NumberSequenceKeypoint.new(1, 0),
+    }),
+}, fade)
 
 local dragHandle = new("TextButton", {
     BackgroundTransparency = 1,
     Text = "",
     Position = UDim2.fromOffset(0, 0),
-    Size = UDim2.new(1, -100, 1, 0),
+    Size = UDim2.new(1, -118, 1, 0),
     AutoButtonColor = false,
-}, header)
+}, banner)
 
-local function smallButton(text, x)
-    local button = new("TextButton", {
-        Position = UDim2.new(1, x, 0, 0),
-        Size = UDim2.fromOffset(34, 32),
-        BackgroundColor3 = C.card,
-        BackgroundTransparency = 0.1,
-        BorderSizePixel = 0,
-        Text = text,
-        TextSize = 22,
+local controls = new("Frame", {
+    Position = UDim2.new(1, -120, 0, 12),
+    Size = UDim2.fromOffset(102, 34),
+    BackgroundColor3 = C.base,
+    BackgroundTransparency = 0.15,
+    BorderSizePixel = 0,
+    ZIndex = 5,
+}, window)
+rounded(controls, 17)
+glow(controls, 17)
+
+local function control(value, x)
+    return new("TextButton", {
+        Position = UDim2.fromOffset(x, 0),
+        Size = UDim2.fromOffset(48, 34),
+        BackgroundTransparency = 1,
+        Text = value,
+        TextSize = 24,
         Font = Enum.Font.Gotham,
         TextColor3 = C.text,
-        AutoButtonColor = true,
-    }, header)
-    corner(button, 9)
-    return button
+    }, controls)
 end
 
-local minimize = smallButton("-", -78)
-local close = smallButton("x", -36)
+local minimize = control("-", 2)
+local close = control("x", 52)
 
-local dock = new("ImageButton", {
-    Name = "OpenLexHub",
-    Size = UDim2.fromOffset(52, 52),
-    BackgroundColor3 = C.card,
-    Image = LOGO,
-    ScaleType = Enum.ScaleType.Fit,
+local main = new("Frame", {
+    Position = UDim2.fromOffset(SIDE + 12, 210),
+    Size = UDim2.new(1, -SIDE - 24, 1, -242),
+    BackgroundColor3 = C.base,
     BorderSizePixel = 0,
-    ZIndex = 20,
-    AutoButtonColor = true,
-}, gui)
+    ZIndex = 4,
+}, window)
+rounded(main, 22)
+glass(main, 0.05, 0.45)
+glow(main, 22)
 
-corner(dock, 14)
-border(dock, C.accent)
+local function icon(owner, id, fallback, x, y, size)
+    local holder = new("Frame", {
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(x, y),
+        Size = UDim2.fromOffset(size, size),
+    }, owner)
 
-local function viewport()
-    local camera = workspace.CurrentCamera
-    return camera and camera.ViewportSize or Vector2.new(1280, 720)
-end
-
-local placed = false
-
-local function clampPosition(object, x, y)
-    local view = viewport()
-    local width = object == window and W * scale.Scale or 52
-    local height = object == window and H * scale.Scale or 52
-    local ax, ay = object.AnchorPoint.X, object.AnchorPoint.Y
-
-    x = math.clamp(
-        x,
-        width * ax + 8,
-        math.max(width * ax + 8, view.X - width * (1 - ax) - 8)
+    local glyph = text(
+        holder, fallback, math.floor(size * 0.8),
+        0, 0, size, size, C.text
     )
-    y = math.clamp(
-        y,
-        height * ay + 8,
-        math.max(height * ay + 8, view.Y - height * (1 - ay) - 8)
-    )
+    glyph.TextXAlignment = Enum.TextXAlignment.Center
 
-    object.Position = UDim2.fromOffset(x, y)
-end
+    local image = new("ImageLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.fromScale(1, 1),
+        Image = "rbxassetid://" .. id,
+        ImageTransparency = 1,
+        ScaleType = Enum.ScaleType.Fit,
+    }, holder)
 
-local function fit()
-    local view = viewport()
-
-    scale.Scale = math.max(
-        0.1,
-        math.min(1, (view.X - 24) / W, (view.Y - 24) / H)
-    )
-
-    if not placed then
-        window.Position = UDim2.fromOffset(view.X / 2, view.Y / 2)
-        dock.Position = UDim2.fromOffset(
-            12, math.max(8, view.Y / 2 - 26)
-        )
-        placed = true
+    local function refresh()
+        image.ImageTransparency = image.IsLoaded and 0 or 1
+        glyph.Visible = not image.IsLoaded
     end
 
-    clampPosition(
-        window, window.Position.X.Offset, window.Position.Y.Offset
-    )
-    clampPosition(
-        dock, dock.Position.X.Offset, dock.Position.Y.Offset
-    )
+    on(image:GetPropertyChangedSignal("IsLoaded"), refresh)
+    refresh()
+
+    return holder, image, glyph
 end
 
-local function watchCamera()
-    if cameraConnection then cameraConnection:Disconnect() end
+local titleIcon, titleImage, titleGlyph =
+    icon(main, ASSETS.Quests, "≡", 34, 18, 56)
 
-    if workspace.CurrentCamera then
-        cameraConnection = workspace.CurrentCamera
-            :GetPropertyChangedSignal("ViewportSize")
-            :Connect(fit)
-    end
+local title = text(
+    main, "Quests", 47,
+    112, 10, 650, 59,
+    C.text, Enum.Font.Garamond
+)
+title.TextStrokeColor3 = C.accent
+title.TextStrokeTransparency = 0.65
 
-    fit()
+local subtitle = text(
+    main, "Quản lý nhiệm vụ trong Blox Fruits", 15,
+    114, 66, 850, 24, C.muted
+)
+
+text(main, "✿", 56, W - SIDE - 135, 13, 68, 70, C.accent)
+text(main, "✦", 27, 18, -17, 34, 34, C.accent)
+text(main, "✦", 25, W - SIDE - 87, H - 257, 34, 34, C.accent)
+
+new("Frame", {
+    Position = UDim2.fromOffset(112, 57),
+    Size = UDim2.new(1, -180, 0, 1),
+    BackgroundColor3 = C.accent,
+    BackgroundTransparency = 0.45,
+    BorderSizePixel = 0,
+}, main)
+
+local body = new("Frame", {
+    Position = UDim2.fromOffset(18, 112),
+    Size = UDim2.new(1, -36, 1, -132),
+    BackgroundTransparency = 1,
+}, main)
+
+local tabs = {
+    {"Home", "Home", "⌂", "Thông tin tài khoản và giao diện"},
+    {"Farm", "Farm", "⚔", "Thiết lập giao diện farming"},
+    {"Combat", "Combat", "⊕", "Thiết lập giao diện chiến đấu"},
+    {"Player", "Player", "♟", "Thông tin người chơi Roblox hiện tại"},
+    {"Teleport", "Teleport", "◎", "Danh sách Sea và địa điểm"},
+    {"Race / V4", "Race", "Ψ", "Giao diện Race và V4"},
+    {"Fruit", "Fruit", "●", "Giao diện quản lý trái"},
+    {"Raid / Boss", "Raid", "☠", "Giao diện Raid và Boss"},
+    {"Sea Event", "Sea", "♜", "Giao diện sự kiện trên biển"},
+    {
+        "Quests", "Quests", "≡",
+        "Quản lý và tự động làm nhiệm vụ trong Blox Fruits",
+    },
+    {"Misc", "Misc", "◇", "Các thiết lập bổ sung"},
+    {"Config", "Config", "⚙", "Tùy chỉnh giao diện Lex Hub"},
+}
+
+local pages, entries, state = {}, {}, {}
+local selectTab
+
+local function panel(owner, position, size)
+    local frame = new("Frame", {
+        Position = position,
+        Size = size,
+        BackgroundColor3 = C.panel,
+        BorderSizePixel = 0,
+    }, owner)
+    rounded(frame, 18)
+    glass(frame, 0.12, 0.45)
+    glow(frame, 18)
+    return frame
 end
 
-on(workspace:GetPropertyChangedSignal("CurrentCamera"), watchCamera)
-watchCamera()
+local function list(owner)
+    local frame = new("ScrollingFrame", {
+        Position = UDim2.fromOffset(16, 58),
+        Size = UDim2.new(1, -32, 1, -72),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        CanvasSize = UDim2.new(),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollBarThickness = 2,
+        ScrollBarImageColor3 = C.accent,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+    }, owner)
 
-local function toggleWindow()
-    window.Visible = not window.Visible
+    new("UIListLayout", {
+        Padding = UDim.new(0, 10),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+    }, frame)
+
+    new("UIPadding", {
+        PaddingTop = UDim.new(0, 2),
+        PaddingLeft = UDim.new(0, 2),
+        PaddingRight = UDim.new(0, 4),
+        PaddingBottom = UDim.new(0, 3),
+    }, frame)
+
+    return frame
 end
 
-on(minimize.Activated, toggleWindow)
-on(close.Activated, function() gui:Destroy() end)
-
-on(Input.InputBegan, function(input, processed)
-    if not processed
-        and not Input:GetFocusedTextBox()
-        and input.KeyCode == Enum.KeyCode.RightShift then
-        toggleWindow()
-    end
-end)
-
-local function isPointer(input)
-    return input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch
-end
-
-local function isMove(input, held)
-    return input == held
-        or (
-            held.UserInputType == Enum.UserInputType.MouseButton1
-            and input.UserInputType == Enum.UserInputType.MouseMovement
-        )
-end
-
-local function isRelease(input, held)
-    return input == held
-        or (
-            held.UserInputType == Enum.UserInputType.MouseButton1
-            and input.UserInputType == Enum.UserInputType.MouseButton1
-        )
-end
-
-local function draggable(object, handle, tapped)
-    local held, start, origin, moved
-
-    on(handle.InputBegan, function(input)
-        if not isPointer(input) then return end
-        held, start = input, input.Position
-        origin, moved = object.Position, false
-    end)
-
-    on(Input.InputChanged, function(input)
-        if not held or not isMove(input, held) then return end
-
-        local delta = input.Position - start
-        if delta.Magnitude > 5 then moved = true end
-
-        if moved then
-            clampPosition(
-                object,
-                origin.X.Offset + delta.X,
-                origin.Y.Offset + delta.Y
-            )
-        end
-    end)
-
-    on(Input.InputEnded, function(input)
-        if held and isRelease(input, held) then
-            held = nil
-            if tapped and not moved then tapped() end
-        end
-    end)
-
-    on(Input.WindowFocusReleased, function()
-        held = nil
-    end)
-end
-
-draggable(window, dragHandle)
-draggable(dock, dock, toggleWindow)
-
-local pages, entries = {}, {}
-
-local function card(page, height, clickable)
+local function row(owner, height, clickable)
     local object = new(clickable and "TextButton" or "Frame", {
         Size = UDim2.new(1, -2, 0, height),
-        LayoutOrder = #page:GetChildren(),
-        BackgroundColor3 = C.card,
-        BackgroundTransparency = 0.13,
+        LayoutOrder = #owner:GetChildren(),
+        BackgroundColor3 = C.row,
         BorderSizePixel = 0,
-    }, page)
+    }, owner)
 
     if clickable then
         object.Text = ""
         object.AutoButtonColor = false
     end
 
-    corner(object, 13)
-    border(object)
+    rounded(object, 13)
+    stroke(object, C.edge, 1, 0.35)
+    glass(object, 0.18, 0.4)
+
     return object
 end
 
-local function section(page, text)
-    local heading = label(
-        page, text, 14,
-        UDim2.new(), UDim2.new(1, 0, 0, 30),
-        C.muted
-    )
-    heading.LayoutOrder = #page:GetChildren() - 1
-end
+local function toggle(owner, page, name, description, assetKey, fallback)
+    local button = row(owner, 68, true)
 
-local function info(page, name, value)
-    local row = card(page, 78)
+    icon(button, ASSETS[assetKey], fallback, 15, 18, 32)
 
-    label(
-        row, name, 17,
-        UDim2.fromOffset(18, 13),
-        UDim2.new(1, -36, 0, 24)
+    text(
+        button, name, 18,
+        63, 10, 350, 25,
+        C.text, Enum.Font.GothamBold
     )
-    label(
-        row, value, 14,
-        UDim2.fromOffset(18, 44),
-        UDim2.new(1, -36, 0, 20),
-        C.muted
-    )
-end
-
-local function toggle(page, name)
-    local row = card(page, 64, true)
-    local enabled = false
-
-    label(
-        row, name, 16,
-        UDim2.fromOffset(17, 20),
-        UDim2.new(1, -100, 0, 24)
-    )
+    text(button, description, 12, 64, 37, 350, 18, C.muted)
 
     local track = new("Frame", {
-        Position = UDim2.new(1, -64, 0, 20),
-        Size = UDim2.fromOffset(44, 24),
-        BackgroundColor3 = C.edge,
+        Position = UDim2.new(1, -70, 0.5, -13),
+        Size = UDim2.fromOffset(52, 26),
+        BackgroundColor3 = Color3.fromRGB(103, 64, 133),
         BorderSizePixel = 0,
-    }, row)
-    corner(track, 12)
-
-    local thumb = new("Frame", {
-        Position = UDim2.fromOffset(3, 3),
-        Size = UDim2.fromOffset(18, 18),
-        BackgroundColor3 = C.text,
-        BorderSizePixel = 0,
-    }, track)
-    corner(thumb, 9)
-
-    on(row.Activated, function()
-        enabled = not enabled
-
-        animate(track, {
-            BackgroundColor3 = enabled and C.accent or C.edge,
-        })
-        animate(thumb, {
-            Position = UDim2.fromOffset(enabled and 23 or 3, 3),
-        })
-    end)
-end
-
-local function choice(page, name, options)
-    local row = card(page, 64, true)
-    local index = 1
-
-    label(
-        row, name, 16,
-        UDim2.fromOffset(17, 20),
-        UDim2.new(1, -205, 0, 24)
-    )
-
-    local value = label(
-        row, options[1] .. "  >", 14,
-        UDim2.new(1, -185, 0, 20),
-        UDim2.fromOffset(165, 24),
-        C.accent
-    )
-    value.TextXAlignment = Enum.TextXAlignment.Right
-
-    on(row.Activated, function()
-        index = index % #options + 1
-        value.Text = options[index] .. "  >"
-    end)
-end
-
-local function slider(page, name, minimum, maximum, initial, changed)
-    local row = card(page, 88)
-
-    label(
-        row, name, 16,
-        UDim2.fromOffset(17, 12),
-        UDim2.new(1, -110, 0, 24)
-    )
-
-    local value = label(
-        row, tostring(initial), 14,
-        UDim2.new(1, -85, 0, 12),
-        UDim2.fromOffset(65, 24),
-        C.accent
-    )
-    value.TextXAlignment = Enum.TextXAlignment.Right
-
-    local hit = new("TextButton", {
-        Position = UDim2.fromOffset(20, 43),
-        Size = UDim2.new(1, -40, 0, 30),
-        BackgroundTransparency = 1,
-        Text = "",
-        AutoButtonColor = false,
-    }, row)
-
-    local track = new("Frame", {
-        Position = UDim2.new(0, 0, 0.5, -2),
-        Size = UDim2.new(1, 0, 0, 4),
-        BackgroundColor3 = C.edge,
-        BorderSizePixel = 0,
-    }, hit)
-    corner(track, 2)
-
-    local fill = new("Frame", {
-        BackgroundColor3 = C.accent,
-        BorderSizePixel = 0,
-    }, track)
-    corner(fill, 2)
+    }, button)
+    rounded(track, 13)
 
     local knob = new("Frame", {
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Size = UDim2.fromOffset(12, 12),
-        BackgroundColor3 = C.text,
+        Position = UDim2.fromOffset(3, 3),
+        Size = UDim2.fromOffset(20, 20),
+        BackgroundColor3 = Color3.fromRGB(237, 207, 255),
         BorderSizePixel = 0,
     }, track)
-    corner(knob, 6)
+    rounded(knob, 10)
 
-    local function set(number)
-        number = math.clamp(
-            math.floor(number + 0.5), minimum, maximum
-        )
-        local ratio = (number - minimum) / (maximum - minimum)
+    local key = page .. "/" .. name
+    state[key] = false
 
-        value.Text = tostring(number)
-        fill.Size = UDim2.new(ratio, 0, 1, 0)
-        knob.Position = UDim2.fromScale(ratio, 0.5)
+    on(button.Activated, function()
+        state[key] = not state[key]
 
-        if changed then changed(number) end
-    end
-
-    local function update(input)
-        if track.AbsoluteSize.X <= 0 then return end
-
-        local ratio = math.clamp(
-            (input.Position.X - track.AbsolutePosition.X)
-                / track.AbsoluteSize.X,
-            0, 1
-        )
-        set(minimum + ratio * (maximum - minimum))
-    end
-
-    local held
-
-    on(hit.InputBegan, function(input)
-        if isPointer(input) then
-            held = input
-            update(input)
-        end
+        tween(track, {
+            BackgroundColor3 = state[key]
+                and C.accent
+                or Color3.fromRGB(103, 64, 133),
+        })
+        tween(knob, {
+            Position = UDim2.fromOffset(state[key] and 29 or 3, 3),
+        })
     end)
-
-    on(Input.InputChanged, function(input)
-        if held and isMove(input, held) then
-            update(input)
-        end
-    end)
-
-    on(Input.InputEnded, function(input)
-        if held and isRelease(input, held) then
-            held = nil
-        end
-    end)
-
-    on(Input.WindowFocusReleased, function()
-        held = nil
-    end)
-
-    set(initial)
 end
 
-local tabs = {
-    {"Status", "▥", "View local and server information."},
-    {"Farm Settings", "⚙", "Farm controls preview."},
-    {"Main", "⌂", "Main controls preview."},
-    {"Multi Farm", "◇", "Multi-farm controls preview."},
-    {"Quests", "≡", "Quest controls preview."},
-    {"Items", "□", "Item controls preview."},
-    {"Settings", "⋮", "Customize the Lex Hub interface."},
-}
+local function stat(owner, name, value)
+    local card = row(owner, 45)
+    text(card, name, 14, 14, 10, 230, 25, C.muted)
 
-local function selectTab(name)
-    for pageName, page in pairs(pages) do
-        page.Visible = pageName == name
-    end
-
-    for pageName, entry in pairs(entries) do
-        local active = pageName == name
-
-        entry.button.BackgroundTransparency = active and 0.05 or 1
-        entry.stroke.Enabled = active
-        entry.marker.Visible = active
-        entry.text.TextColor3 = active and C.text or C.muted
-        entry.icon.TextColor3 = active and C.accent or C.muted
-    end
-
-    title.Text = name
-    subtitle.Text = entries[name].description
+    return new("TextLabel", {
+        Position = UDim2.new(0.58, 0, 0, 10),
+        Size = UDim2.new(0.42, -14, 0, 25),
+        BackgroundTransparency = 1,
+        Text = tostring(value),
+        TextSize = 14,
+        TextColor3 = C.text,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Right,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+    }, card)
 end
 
 for index, tab in ipairs(tabs) do
-    local name, glyph, description = tab[1], tab[2], tab[3]
-
-    local page = new("ScrollingFrame", {
-        Name = name,
-        Position = UDim2.fromOffset(22, 98),
-        Size = UDim2.new(1, -44, 1, -118),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        CanvasSize = UDim2.new(),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = C.accent,
-        ScrollingDirection = Enum.ScrollingDirection.Y,
-        Visible = false,
-    }, content)
-
-    new("UIListLayout", {
-        Padding = UDim.new(0, 10),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-    }, page)
-
-    new("UIPadding", {
-        PaddingTop = UDim.new(0, 2),
-        PaddingLeft = UDim.new(0, 2),
-        PaddingRight = UDim.new(0, 7),
-        PaddingBottom = UDim.new(0, 6),
-    }, page)
-
-    pages[name] = page
+    local name, key, glyph = tab[1], tab[2], tab[3]
 
     local button = new("TextButton", {
-        Size = UDim2.new(1, 0, 0, 49),
+        Size = UDim2.new(1, 0, 0, 36),
         LayoutOrder = index,
-        BackgroundColor3 = C.card,
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
         Text = "",
         AutoButtonColor = false,
-    }, nav)
-
-    corner(button, 12)
-    border(button)
-
-    local marker = new("Frame", {
-        Position = UDim2.fromOffset(0, 12),
-        Size = UDim2.fromOffset(3, 25),
-        BackgroundColor3 = C.accent,
+        BackgroundColor3 = Color3.fromRGB(127, 44, 176),
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
-    }, button)
-    corner(marker, 2)
+    }, nav)
+    rounded(button, 12)
+
+    local outline = stroke(button, C.accent, 1, 0.8)
+    icon(button, ASSETS[key], glyph, 14, 6, 25)
+
+    local caption = text(
+        button, name, 15,
+        61, 7, 121, 23,
+        C.text, Enum.Font.GothamBold
+    )
 
     entries[name] = {
         button = button,
-        marker = marker,
-        stroke = button:FindFirstChildOfClass("UIStroke"),
-        description = description,
-        icon = label(
-            button, glyph, 24,
-            UDim2.fromOffset(16, 10),
-            UDim2.fromOffset(30, 30),
-            C.muted
-        ),
-        text = label(
-            button, name, 16,
-            UDim2.fromOffset(58, 13),
-            UDim2.new(1, -67, 0, 24),
-            C.muted
-        ),
+        outline = outline,
+        caption = caption,
+        key = key,
+        glyph = glyph,
+        description = tab[4],
     }
 
     on(button.Activated, function()
         selectTab(name)
     end)
+
+    local page = new("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Visible = false,
+    }, body)
+
+    local left = panel(
+        page, UDim2.new(),
+        UDim2.new(0.59, -7, 1, 0)
+    )
+    local right = panel(
+        page, UDim2.new(0.59, 7, 0, 0),
+        UDim2.new(0.41, -7, 1, 0)
+    )
+
+    text(
+        left,
+        name == "Quests" and "♛  Quest Manager" or ("◇  " .. name),
+        21, 21, 15, 520, 28,
+        C.text, Enum.Font.GothamBold
+    )
+    text(
+        right,
+        name == "Quests" and "▥  Thông Tin Nhiệm Vụ" or "▥  Thông tin",
+        19, 21, 15, 350, 28,
+        C.text, Enum.Font.GothamBold
+    )
+
+    pages[name] = {
+        frame = page,
+        left = list(left),
+        right = list(right),
+    }
 end
 
-on(search:GetPropertyChangedSignal("Text"), function()
-    local query = search.Text:lower()
-        :gsub("^%s+", "")
-        :gsub("%s+$", "")
-
-    for name, entry in pairs(entries) do
-        entry.button.Visible =
-            name:lower():find(query, 1, true) ~= nil
-    end
-end)
-
-section(pages.Status, "Server Stats")
-info(pages.Status, "Place Id", tostring(game.PlaceId))
-info(pages.Status, "Session Time", "UI Preview")
-info(pages.Status, "Server Age", "N/A")
-
-section(pages.Status, "Local Stats")
-info(pages.Status, "Elite Progress", "N/A")
-info(pages.Status, "Player", Players.LocalPlayer.DisplayName)
-
-section(pages["Farm Settings"], "Combat")
-choice(
-    pages["Farm Settings"], "Weapon",
-    {"Melee", "Sword", "Blox Fruit", "Gun"}
+toggle(
+    pages.Quests.left, "Quests", "Quest Tracker",
+    "Theo dõi và hiển thị nhiệm vụ hiện tại", "Farm", "⚔"
 )
-toggle(pages["Farm Settings"], "Bring Mobs")
-toggle(pages["Farm Settings"], "Fast Attack")
-slider(pages["Farm Settings"], "Farm Distance", 0, 100, 25)
+toggle(
+    pages.Quests.left, "Quests", "Boss Quest",
+    "Tự động nhận và làm nhiệm vụ Boss", "Raid", "☠"
+)
+toggle(
+    pages.Quests.left, "Quests", "Daily Quest",
+    "Tự động hoàn thành nhiệm vụ hằng ngày", "Quests", "≡"
+)
 
-section(pages.Main, "Farming")
-toggle(pages.Main, "Auto Farm")
-toggle(pages.Main, "Auto Quest")
-choice(pages.Main, "Farm Mode", {"Level", "Nearest", "Boss"})
+stat(pages.Quests.right, "Nhiệm vụ hiện tại", "--")
+stat(pages.Quests.right, "Tiến độ", "0%")
+stat(pages.Quests.right, "Loại nhiệm vụ", "--")
+stat(pages.Quests.right, "Thời gian", "--")
 
-section(pages["Multi Farm"], "Multi Farm")
-for _, name in ipairs({"Bone Farm", "Cake Farm", "Material Farm"}) do
-    toggle(pages["Multi Farm"], name)
+stat(pages.Home.left, "Username", "@" .. player.Name)
+stat(pages.Home.left, "User ID", player.UserId)
+stat(pages.Home.left, "Place ID", game.PlaceId)
+stat(pages.Home.right, "Phiên bản", "Lex Hub UI")
+stat(pages.Home.right, "Trạng thái", "Preview")
+
+stat(pages.Player.left, "Username", "@" .. player.Name)
+stat(pages.Player.left, "User ID", player.UserId)
+stat(pages.Player.right, "Tài khoản", "Roblox")
+
+local samples = {
+    Farm = {
+        {"Auto Farm", "Tùy chọn giao diện farming"},
+        {"Auto Quest", "Tùy chọn nhận nhiệm vụ"},
+        {"Bring Mobs", "Tùy chọn gom mục tiêu"},
+    },
+    Combat = {
+        {"Fast Attack", "Tùy chọn giao diện chiến đấu"},
+        {"Auto Equip", "Tùy chọn chọn vũ khí"},
+    },
+    Teleport = {
+        {"Sea 1", "Xem địa điểm tại Sea 1"},
+        {"Sea 2", "Xem địa điểm tại Sea 2"},
+        {"Sea 3", "Xem địa điểm tại Sea 3"},
+    },
+    ["Race / V4"] = {
+        {"Race", "Giao diện Race"},
+        {"V4", "Giao diện V4"},
+    },
+    Fruit = {
+        {"Auto Store Fruit", "Tùy chọn lưu trái"},
+        {"Fruit Tracker", "Tùy chọn hiển thị trái"},
+    },
+    ["Raid / Boss"] = {
+        {"Raid", "Giao diện Raid"},
+        {"Boss", "Giao diện Boss"},
+    },
+    ["Sea Event"] = {
+        {"Sea Event", "Giao diện sự kiện biển"},
+        {"Sea Beast", "Giao diện mục tiêu biển"},
+    },
+    Misc = {
+        {"Misc Preview", "Các tùy chọn giao diện bổ sung"},
+    },
+}
+
+for name, options in pairs(samples) do
+    for _, item in ipairs(options) do
+        toggle(
+            pages[name].left, name, item[1], item[2],
+            entries[name].key, entries[name].glyph
+        )
+    end
+
+    stat(pages[name].right, "Trạng thái", "Preview")
+    stat(pages[name].right, "Đã chọn", "--")
 end
 
-section(pages.Quests, "Quests")
-toggle(pages.Quests, "Auto Accept Quest")
-toggle(pages.Quests, "Elite Quest")
+local function applyGlass(value)
+    glassValue = math.clamp(value, 0, 90)
 
-section(pages.Items, "Items")
-toggle(pages.Items, "Auto Store Fruit")
-toggle(pages.Items, "Collect Chests")
-
-section(pages.Settings, "Appearance")
-slider(
-    pages.Settings, "Background Visibility",
-    10, 65, 26,
-    function(value)
-        shade.BackgroundTransparency = value / 100
+    for _, target in ipairs(glassTargets) do
+        target[1].BackgroundTransparency =
+            target[2] + glassValue / 100 * target[3]
     end
+
+    backdrop.ImageTransparency = 0.35 + glassValue / 100 * 0.45
+
+    for _, entry in pairs(entries) do
+        if entry.outline.Transparency < 0.5 then
+            entry.button.BackgroundTransparency =
+                0.1 + glassValue / 100 * 0.35
+        end
+    end
+end
+
+local sliderRow = row(pages.Config.left, 90)
+
+text(
+    sliderRow, "Độ trong suốt", 17,
+    17, 12, 350, 25,
+    C.text, Enum.Font.GothamBold
 )
 
-info(
-    pages.Settings,
-    "Window Controls",
-    "Drag the header. Tap the floating logo to hide / open."
-)
-info(
-    pages.Settings,
-    "Keyboard",
-    "Right Shift: hide / open"
+local sliderValue = text(
+    sliderRow, tostring(glassValue), 14,
+    440, 12, 70, 25, C.muted
 )
 
-selectTab("Status")
-print("[Lex Hub] UI ready. No gameplay functions are attached.")
+local hit = new("TextButton", {
+    Position = UDim2.fromOffset(20, 46),
+    Size = UDim2.new(1, -40, 0, 28),
+    BackgroundTransparency = 1,
+    Text = "",
+    AutoButtonColor = false,
+}, sliderRow)
+
+local track = new("Frame", {
+    Position = UDim2.new(0, 0, 0.5, -2),
+    Size = UDim2.new(1, 0, 0, 4),
+    BackgroundColor3 = Color3.fromRGB(99, 58, 128),
+    BorderSizePixel = 0,
+}, hit)
+rounded(track, 2)
+
+local fill = new("Frame", {
+    Size = UDim2.new(glassValue / 90, 0, 1, 0),
+    BackgroundColor3 = C.accent,
+    BorderSizePixel = 0,
+}, track)
+
+local thumb = new("Frame", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Size = UDim2.fromOffset(13, 13),
+    Position = UDim2.fromScale(glassValue / 90, 0.5),
+    BackgroundColor3 = C.text,
+    BorderSizePixel = 0,
+}, track)
+rounded(thumb, 7)
+
+local sliderInp
