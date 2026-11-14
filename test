@@ -1,0 +1,54 @@
+-- Quantum Onyx: loader cho nhanh Free, da bo he thong key.
+
+local Directory =
+    "https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/Games"
+
+local Scripts = {
+    [994732206] = Directory .. "/BloxFruits.lua",
+    [9186719164] = Directory .. "/SailorPiece.lua",
+    [8191429227] = Directory .. "/CutTrees.lua",
+}
+
+local function Report(message)
+    warn("[Quantum Onyx] " .. tostring(message))
+end
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local url = Scripts[game.GameId]
+if not url then
+    Report("Unsupported GameId: " .. tostring(game.GameId))
+    return
+end
+
+if type(loadstring) ~= "function" then
+    Report("This environment does not provide loadstring.")
+    return
+end
+
+local downloaded, source = pcall(function()
+    return game:HttpGet(url)
+end)
+
+if not downloaded then
+    Report("Download failed: " .. tostring(source))
+    return
+end
+
+if type(source) ~= "string" or source:match("^%s*$") then
+    Report("The downloaded script is empty or invalid.")
+    return
+end
+
+local run, compileError = loadstring(source)
+if not run then
+    Report("Compilation failed: " .. tostring(compileError))
+    return
+end
+
+local success, runtimeError = pcall(run)
+if not success then
+    Report("Execution failed: " .. tostring(runtimeError))
+end
