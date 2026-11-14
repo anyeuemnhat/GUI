@@ -1,830 +1,251 @@
--- Lex Hub: UI only. No gameplay functions.
-repeat task.wait() until game:IsLoaded()
-
-local Players = game:GetService("Players")
-local Input = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-
-repeat task.wait() until Players.LocalPlayer
-
-local LOGO = "rbxassetid://92599590358566"
-local BACKGROUND = "rbxassetid://102363221886944"
-local W, H, SIDE = 900, 610, 260
-
-local C = {
-    base = Color3.fromRGB(11, 16, 24),
-    card = Color3.fromRGB(23, 31, 43),
-    edge = Color3.fromRGB(47, 62, 80),
-    text = Color3.fromRGB(230, 236, 245),
-    muted = Color3.fromRGB(145, 163, 183),
-    accent = Color3.fromRGB(132, 190, 226),
-}
-
-local parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-
-if type(gethui) == "function" then
-    local ok, hidden = pcall(gethui)
-    if ok and typeof(hidden) == "Instance" then
-        parent = hidden
-    end
-end
-
-local old = parent:FindFirstChild("LexHubUI")
-if old then old:Destroy() end
-
-local function new(class, props, owner)
-    local object = Instance.new(class)
-    for key, value in pairs(props) do
-        object[key] = value
-    end
-    object.Parent = owner
-    return object
-end
-
-local function corner(object, radius)
-    new("UICorner", {
-        CornerRadius = UDim.new(0, radius or 12),
-    }, object)
-end
-
-local function border(object, color)
-    new("UIStroke", {
-        Color = color or C.edge,
-        Thickness = 1,
-        Transparency = 0.25,
-        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-    }, object)
-end
-
-local function label(owner, text, size, position, dimensions, color)
-    return new("TextLabel", {
-        BackgroundTransparency = 1,
-        Text = text,
-        Font = Enum.Font.Gotham,
-        TextSize = size,
-        TextColor3 = color or C.text,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextTruncate = Enum.TextTruncate.AtEnd,
-        Position = position,
-        Size = dimensions,
-    }, owner)
-end
-
-local function animate(object, props)
-    TweenService:Create(
-        object,
-        TweenInfo.new(0.16, Enum.EasingStyle.Quad),
-        props
-    ):Play()
-end
-
-local connections = {}
-local cameraConnection
-
-local function on(signal, callback)
-    local connection = signal:Connect(callback)
-    connections[#connections + 1] = connection
-    return connection
-end
-
-local gui = new("ScreenGui", {
-    Name = "LexHubUI",
-    ResetOnSpawn = false,
-    IgnoreGuiInset = true,
-    DisplayOrder = 1000,
-    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, parent)
-
-gui.Destroying:Connect(function()
-    for _, connection in ipairs(connections) do
-        connection:Disconnect()
-    end
-    if cameraConnection then
-        cameraConnection:Disconnect()
-    end
-end)
-
-local window = new("Frame", {
-    Name = "Window",
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Size = UDim2.fromOffset(W, H),
-    BackgroundColor3 = C.base,
-    BorderSizePixel = 0,
-    ClipsDescendants = true,
-}, gui)
-
-corner(window, 18)
-border(window)
-
-local scale = new("UIScale", {Scale = 1}, window)
-
-new("ImageLabel", {
-    Name = "Background",
-    BackgroundTransparency = 1,
-    Size = UDim2.fromScale(1, 1),
-    Image = BACKGROUND,
-    ImageTransparency = 0.08,
-    ScaleType = Enum.ScaleType.Crop,
-    ZIndex = 1,
-}, window)
-
-local shade = new("Frame", {
-    BackgroundColor3 = C.base,
-    BackgroundTransparency = 0.26,
-    Size = UDim2.fromScale(1, 1),
-    BorderSizePixel = 0,
-    ZIndex = 2,
-}, window)
-
-local sidebar = new("Frame", {
-    BackgroundColor3 = C.base,
-    BackgroundTransparency = 0.06,
-    Size = UDim2.new(0, SIDE, 1, 0),
-    BorderSizePixel = 0,
-    ZIndex = 3,
-}, window)
-
-new("Frame", {
-    Position = UDim2.new(1, -1, 0, 0),
-    Size = UDim2.new(0, 1, 1, 0),
-    BackgroundColor3 = C.edge,
-    BorderSizePixel = 0,
-}, sidebar)
-
-local brand = new("Frame", {
-    Position = UDim2.fromOffset(14, 16),
-    Size = UDim2.new(1, -28, 0, 96),
-    BackgroundColor3 = Color3.fromRGB(44, 62, 78),
-    BackgroundTransparency = 0.12,
-    BorderSizePixel = 0,
-}, sidebar)
-
-corner(brand, 15)
-border(brand)
-
-new("ImageLabel", {
-    BackgroundTransparency = 1,
-    Position = UDim2.fromOffset(12, 17),
-    Size = UDim2.fromOffset(62, 62),
-    Image = LOGO,
-    ScaleType = Enum.ScaleType.Fit,
-}, brand)
-
-local brandTitle = label(
-    brand, "Lex Hub", 22,
-    UDim2.fromOffset(86, 24),
-    UDim2.new(1, -96, 0, 27)
-)
-brandTitle.Font = Enum.Font.GothamBold
-
-label(
-    brand, "[ Blox Fruits ]", 13,
-    UDim2.fromOffset(86, 57),
-    UDim2.new(1, -96, 0, 20),
-    C.muted
-)
-
-local search = new("TextBox", {
-    Position = UDim2.fromOffset(14, 126),
-    Size = UDim2.new(1, -28, 0, 44),
-    BackgroundColor3 = C.card,
-    BackgroundTransparency = 0.08,
-    BorderSizePixel = 0,
-    Text = "",
-    PlaceholderText = "Search tabs...",
-    PlaceholderColor3 = C.muted,
-    TextColor3 = C.text,
-    TextSize = 15,
-    Font = Enum.Font.Gotham,
-    ClearTextOnFocus = false,
-    TextXAlignment = Enum.TextXAlignment.Left,
-}, sidebar)
-
-corner(search)
-border(search)
-
-new("UIPadding", {
-    PaddingLeft = UDim.new(0, 15),
-    PaddingRight = UDim.new(0, 12),
-}, search)
-
-local nav = new("ScrollingFrame", {
-    Position = UDim2.fromOffset(14, 185),
-    Size = UDim2.new(1, -28, 1, -233),
-    BackgroundTransparency = 1,
-    BorderSizePixel = 0,
-    CanvasSize = UDim2.new(),
-    AutomaticCanvasSize = Enum.AutomaticSize.Y,
-    ScrollBarThickness = 2,
-    ScrollBarImageColor3 = C.accent,
-    ScrollingDirection = Enum.ScrollingDirection.Y,
-}, sidebar)
-
-new("UIListLayout", {
-    Padding = UDim.new(0, 8),
-    SortOrder = Enum.SortOrder.LayoutOrder,
-}, nav)
-
-new("UIPadding", {
-    PaddingBottom = UDim.new(0, 4),
-    PaddingRight = UDim.new(0, 4),
-}, nav)
-
-label(
-    sidebar, "LEX HUB  /  UI PREVIEW", 11,
-    UDim2.new(0, 21, 1, -34),
-    UDim2.new(1, -42, 0, 20),
-    C.muted
-)
-
-local content = new("Frame", {
-    Position = UDim2.fromOffset(SIDE, 0),
-    Size = UDim2.new(1, -SIDE, 1, 0),
-    BackgroundTransparency = 1,
-    ZIndex = 3,
-}, window)
-
-local header = new("Frame", {
-    Position = UDim2.fromOffset(22, 18),
-    Size = UDim2.new(1, -44, 0, 66),
-    BackgroundTransparency = 1,
-}, content)
-
-local title = label(
-    header, "Status", 26,
-    UDim2.fromOffset(0, 0),
-    UDim2.new(1, -110, 0, 32)
-)
-title.Font = Enum.Font.GothamBold
-
-local subtitle = label(
-    header, "View local and server information.", 13,
-    UDim2.fromOffset(0, 39),
-    UDim2.new(1, -10, 0, 20),
-    C.muted
-)
-
-local dragHandle = new("TextButton", {
-    BackgroundTransparency = 1,
-    Text = "",
-    Position = UDim2.fromOffset(0, 0),
-    Size = UDim2.new(1, -100, 1, 0),
-    AutoButtonColor = false,
-}, header)
-
-local function smallButton(text, x)
-    local button = new("TextButton", {
-        Position = UDim2.new(1, x, 0, 0),
-        Size = UDim2.fromOffset(34, 32),
-        BackgroundColor3 = C.card,
-        BackgroundTransparency = 0.1,
-        BorderSizePixel = 0,
-        Text = text,
-        TextSize = 22,
-        Font = Enum.Font.Gotham,
-        TextColor3 = C.text,
-        AutoButtonColor = true,
-    }, header)
-    corner(button, 9)
-    return button
-end
-
-local minimize = smallButton("-", -78)
-local close = smallButton("x", -36)
-
-local dock = new("ImageButton", {
-    Name = "OpenLexHub",
-    Size = UDim2.fromOffset(52, 52),
-    BackgroundColor3 = C.card,
-    Image = LOGO,
-    ScaleType = Enum.ScaleType.Fit,
-    BorderSizePixel = 0,
-    ZIndex = 20,
-    AutoButtonColor = true,
-}, gui)
-
-corner(dock, 14)
-border(dock, C.accent)
-
-local function viewport()
-    local camera = workspace.CurrentCamera
-    return camera and camera.ViewportSize or Vector2.new(1280, 720)
-end
-
-local placed = false
-
-local function clampPosition(object, x, y)
-    local view = viewport()
-    local width = object == window and W * scale.Scale or 52
-    local height = object == window and H * scale.Scale or 52
-    local ax, ay = object.AnchorPoint.X, object.AnchorPoint.Y
-
-    x = math.clamp(
-        x,
-        width * ax + 8,
-        math.max(width * ax + 8, view.X - width * (1 - ax) - 8)
-    )
-    y = math.clamp(
-        y,
-        height * ay + 8,
-        math.max(height * ay + 8, view.Y - height * (1 - ay) - 8)
-    )
-
-    object.Position = UDim2.fromOffset(x, y)
-end
-
-local function fit()
-    local view = viewport()
-
-    scale.Scale = math.max(
-        0.1,
-        math.min(1, (view.X - 24) / W, (view.Y - 24) / H)
-    )
-
-    if not placed then
-        window.Position = UDim2.fromOffset(view.X / 2, view.Y / 2)
-        dock.Position = UDim2.fromOffset(
-            12, math.max(8, view.Y / 2 - 26)
-        )
-        placed = true
-    end
-
-    clampPosition(
-        window, window.Position.X.Offset, window.Position.Y.Offset
-    )
-    clampPosition(
-        dock, dock.Position.X.Offset, dock.Position.Y.Offset
-    )
-end
-
-local function watchCamera()
-    if cameraConnection then cameraConnection:Disconnect() end
-
-    if workspace.CurrentCamera then
-        cameraConnection = workspace.CurrentCamera
-            :GetPropertyChangedSignal("ViewportSize")
-            :Connect(fit)
-    end
-
-    fit()
-end
-
-on(workspace:GetPropertyChangedSignal("CurrentCamera"), watchCamera)
-watchCamera()
-
-local function toggleWindow()
-    window.Visible = not window.Visible
-end
-
-on(minimize.Activated, toggleWindow)
-on(close.Activated, function() gui:Destroy() end)
-
-on(Input.InputBegan, function(input, processed)
-    if not processed
-        and not Input:GetFocusedTextBox()
-        and input.KeyCode == Enum.KeyCode.RightShift then
-        toggleWindow()
-    end
-end)
-
-local function isPointer(input)
-    return input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch
-end
-
-local function isMove(input, held)
-    return input == held
-        or (
-            held.UserInputType == Enum.UserInputType.MouseButton1
-            and input.UserInputType == Enum.UserInputType.MouseMovement
-        )
-end
-
-local function isRelease(input, held)
-    return input == held
-        or (
-            held.UserInputType == Enum.UserInputType.MouseButton1
-            and input.UserInputType == Enum.UserInputType.MouseButton1
-        )
-end
-
-local function draggable(object, handle, tapped)
-    local held, start, origin, moved
-
-    on(handle.InputBegan, function(input)
-        if not isPointer(input) then return end
-        held, start = input, input.Position
-        origin, moved = object.Position, false
+-- Lex Hub: additional appearance settings
+if not gui:GetAttribute("LexAppearanceV2") then
+ gui:SetAttribute("LexAppearanceV2",true)
+ local INVITE="https://discord.gg/vuWaN9cPN"
+ local shape="Bo góc"
+ local opacity=60
+ local shapeButtons={}
+ local dockCorner=dock:FindFirstChildOfClass("UICorner")
+ if not dockCorner then dockCorner=new("UICorner",{},dock) end
+
+ clampPosition=function(object,x,y)
+  local v=viewport()
+  local w=object==window and W*scale.Scale or object.Size.X.Offset
+  local h=object==window and H*scale.Scale or object.Size.Y.Offset
+  local ax,ay=object.AnchorPoint.X,object.AnchorPoint.Y
+  object.Position=UDim2.fromOffset(
+   math.clamp(x,w*ax+8,math.max(w*ax+8,v.X-w*(1-ax)-8)),
+   math.clamp(y,h*ay+8,math.max(h*ay+8,v.Y-h*(1-ay)-8)))
+ end
+
+ for _,row in ipairs(pages.Settings:GetChildren()) do
+  for _,child in ipairs(row:GetChildren()) do
+   if child:IsA("TextLabel") and child.Text=="Background Visibility" then
+    row.Visible=false
+   end
+  end
+ end
+
+ section(pages.Settings,"Icon nổi / Nút mở GUI")
+ local shapes=card(pages.Settings,96)
+ label(shapes,"Hình dạng icon",16,
+  UDim2.fromOffset(18,10),UDim2.new(1,-36,0,24))
+
+ local dimensions=card(pages.Settings,132)
+ label(dimensions,"Kích thước: Rộng x Cao (pixel)",16,
+  UDim2.fromOffset(18,10),UDim2.new(1,-36,0,24))
+
+ local sizeBox=new("TextBox",{
+  Name="IconSizeInput",
+  Position=UDim2.fromOffset(18,46),
+  Size=UDim2.new(1,-168,0,36),
+  BackgroundColor3=C.base,
+  BorderSizePixel=0,
+  Text="52 x 52",
+  PlaceholderText="80 x 60",
+  TextColor3=C.text,
+  TextSize=16,
+  Font=Enum.Font.Gotham,
+  ClearTextOnFocus=false,
+ },dimensions)
+ corner(sizeBox,9)
+
+ local applyButton=new("TextButton",{
+  Name="ApplyIconSize",
+  Position=UDim2.new(1,-132,0,46),
+  Size=UDim2.fromOffset(114,36),
+  BackgroundColor3=C.card,
+  BorderSizePixel=0,
+  Text="Áp dụng",
+  TextColor3=C.accent,
+  TextSize=14,
+  Font=Enum.Font.GothamBold,
+  AutoButtonColor=true,
+ },dimensions)
+ corner(applyButton,9)
+ border(applyButton)
+
+ local sizeNote=label(dimensions,
+  "24–160 px. Tròn/Vuông dùng hai cạnh bằng nhau.",12,
+  UDim2.fromOffset(18,96),UDim2.new(1,-36,0,22),C.muted)
+
+ local function applySize(nextShape)
+  local value=sizeBox.Text:gsub("×","x")
+  local a,b=value:match("^%s*(%d+)%s*[xX]%s*(%d+)%s*$")
+
+  if not a then
+   sizeNote.Text="Nhập theo mẫu 80 x 60 rồi bấm Áp dụng."
+   return
+  end
+
+  local w=math.clamp(tonumber(a),24,160)
+  local h=math.clamp(tonumber(b),24,160)
+  shape=nextShape or shape
+  if shape~="Bo góc" then h=w end
+
+  dock.Size=UDim2.fromOffset(w,h)
+  dockCorner.CornerRadius=
+   shape=="Tròn" and UDim.new(.5,0)
+   or shape=="Vuông" and UDim.new(0,0)
+   or UDim.new(0,math.floor(math.min(w,h)*.22))
+
+  sizeBox.Text=w.." x "..h
+  sizeNote.Text="Đã áp dụng: "..w.." x "..h.." px / "..shape
+
+  for name,b in pairs(shapeButtons) do
+   b.BackgroundColor3=name==shape and C.accent or C.card
+   b.TextColor3=name==shape and C.base or C.text
+  end
+
+  clampPosition(dock,dock.Position.X.Offset,dock.Position.Y.Offset)
+ end
+
+ for i,name in ipairs({"Tròn","Vuông","Bo góc"}) do
+  local b=new("TextButton",{
+   Name="IconShape"..i,
+   Position=UDim2.new((i-1)/3,12,0,46),
+   Size=UDim2.new(1/3,-20,0,34),
+   BackgroundColor3=C.card,
+   BorderSizePixel=0,
+   Text=name,
+   TextColor3=C.text,
+   TextSize=14,
+   Font=Enum.Font.Gotham,
+   AutoButtonColor=true,
+  },shapes)
+
+  corner(b,9)
+  shapeButtons[name]=b
+  on(b.Activated,function() applySize(name) end)
+ end
+
+ on(applyButton.Activated,function() applySize() end)
+ on(sizeBox.FocusLost,function(enter)
+  if enter then applySize() end
+ end)
+
+ section(pages.Settings,"Discord")
+ local community=card(pages.Settings,96)
+
+ label(community,"Discord của Lex Hub",16,
+  UDim2.fromOffset(18,10),UDim2.new(1,-36,0,24))
+
+ local linkBox=new("TextBox",{
+  Name="DiscordInviteInput",
+  Position=UDim2.fromOffset(18,46),
+  Size=UDim2.new(1,-168,0,34),
+  BackgroundTransparency=1,
+  Text=INVITE,
+  ClearTextOnFocus=false,
+  TextColor3=C.accent,
+  TextSize=14,
+  Font=Enum.Font.Gotham,
+ },community)
+
+ local copyButton=new("TextButton",{
+  Name="CopyDiscordInvite",
+  Position=UDim2.new(1,-132,0,46),
+  Size=UDim2.fromOffset(114,34),
+  BackgroundColor3=C.card,
+  BorderSizePixel=0,
+  Text="Sao chép link",
+  TextColor3=C.accent,
+  TextSize=13,
+  Font=Enum.Font.GothamBold,
+ },community)
+ corner(copyButton,9)
+ border(copyButton)
+
+ on(linkBox.FocusLost,function()
+  linkBox.Text=INVITE
+ end)
+
+ on(copyButton.Activated,function()
+  local copy=
+   type(setclipboard)=="function" and setclipboard
+   or type(toclipboard)=="function" and toclipboard
+
+  if copy then
+   local ok,result=pcall(copy,INVITE)
+   if ok and result~=false then
+    copyButton.Text="Đã sao chép!"
+    task.delay(2,function()
+     if copyButton.Parent then
+      copyButton.Text="Sao chép link"
+     end
     end)
+    return
+   end
+  end
 
-    on(Input.InputChanged, function(input)
-        if not held or not isMove(input, held) then return end
+  linkBox:CaptureFocus()
+  linkBox.SelectionStart=1
+  linkBox.CursorPosition=#INVITE+1
+ end)
 
-        local delta = input.Position - start
-        if delta.Magnitude > 5 then moved = true end
+ local function navOpacity()
+  for _,entry in pairs(entries) do
+   entry.button.BackgroundTransparency=
+    entry.marker.Visible and opacity/100 or 1
+  end
+ end
 
-        if moved then
-            clampPosition(
-                object,
-                origin.X.Offset + delta.X,
-                origin.Y.Offset + delta.Y
-            )
-        end
-    end)
+ local function panels(value)
+  opacity=value
+  sidebar.BackgroundTransparency=value/100
+  brand.BackgroundTransparency=value/100
+  search.BackgroundTransparency=value/100
 
-    on(Input.InputEnded, function(input)
-        if held and isRelease(input, held) then
-            held = nil
-            if tapped and not moved then tapped() end
-        end
-    end)
-
-    on(Input.WindowFocusReleased, function()
-        held = nil
-    end)
-end
-
-draggable(window, dragHandle)
-draggable(dock, dock, toggleWindow)
-
-local pages, entries = {}, {}
-
-local function card(page, height, clickable)
-    local object = new(clickable and "TextButton" or "Frame", {
-        Size = UDim2.new(1, -2, 0, height),
-        LayoutOrder = #page:GetChildren(),
-        BackgroundColor3 = C.card,
-        BackgroundTransparency = 0.13,
-        BorderSizePixel = 0,
-    }, page)
-
-    if clickable then
-        object.Text = ""
-        object.AutoButtonColor = false
+  for _,page in pairs(pages) do
+   for _,row in ipairs(page:GetChildren()) do
+    if row:IsA("Frame") or row:IsA("TextButton") then
+     row.BackgroundTransparency=value/100
     end
+   end
+  end
 
-    corner(object, 13)
-    border(object)
-    return object
-end
+  navOpacity()
+ end
 
-local function section(page, text)
-    local heading = label(
-        page, text, 14,
-        UDim2.new(), UDim2.new(1, 0, 0, 30),
-        C.muted
-    )
-    heading.LayoutOrder = #page:GetChildren() - 1
-end
+ local originalSelect=selectTab
+ selectTab=function(name)
+  originalSelect(name)
+  navOpacity()
+ end
 
-local function info(page, name, value)
-    local row = card(page, 78)
+ local image=window:FindFirstChild("Background")
+ if image then image.ImageTransparency=0 end
 
-    label(
-        row, name, 17,
-        UDim2.fromOffset(18, 13),
-        UDim2.new(1, -36, 0, 24)
-    )
-    label(
-        row, value, 14,
-        UDim2.fromOffset(18, 44),
-        UDim2.new(1, -36, 0, 20),
-        C.muted
-    )
-end
+ section(pages.Settings,"Ảnh nền và độ trong")
+ slider(pages.Settings,"Độ trong của bảng (%)",
+  0,90,60,panels)
 
-local function toggle(page, name)
-    local row = card(page, 64, true)
-    local enabled = false
+ slider(pages.Settings,"Độ sáng ảnh nền (%)",
+  0,100,65,function(value)
+   shade.BackgroundTransparency=value/100
+  end)
 
-    label(
-        row, name, 16,
-        UDim2.fromOffset(17, 20),
-        UDim2.new(1, -100, 0, 24)
-    )
+ panels(opacity)
 
-    local track = new("Frame", {
-        Position = UDim2.new(1, -64, 0, 20),
-        Size = UDim2.fromOffset(44, 24),
-        BackgroundColor3 = C.edge,
-        BorderSizePixel = 0,
-    }, row)
-    corner(track, 12)
+ for _,row in ipairs(pages.Status:GetChildren()) do
+  local playerRow=false
 
-    local thumb = new("Frame", {
-        Position = UDim2.fromOffset(3, 3),
-        Size = UDim2.fromOffset(18, 18),
-        BackgroundColor3 = C.text,
-        BorderSizePixel = 0,
-    }, track)
-    corner(thumb, 9)
+  for _,child in ipairs(row:GetChildren()) do
+   if child:IsA("TextLabel") and child.Text=="Player" then
+    playerRow=true
+   end
+  end
 
-    on(row.Activated, function()
-        enabled = not enabled
-
-        animate(track, {
-            BackgroundColor3 = enabled and C.accent or C.edge,
-        })
-        animate(thumb, {
-            Position = UDim2.fromOffset(enabled and 23 or 3, 3),
-        })
-    end)
-end
-
-local function choice(page, name, options)
-    local row = card(page, 64, true)
-    local index = 1
-
-    label(
-        row, name, 16,
-        UDim2.fromOffset(17, 20),
-        UDim2.new(1, -205, 0, 24)
-    )
-
-    local value = label(
-        row, options[1] .. "  >", 14,
-        UDim2.new(1, -185, 0, 20),
-        UDim2.fromOffset(165, 24),
-        C.accent
-    )
-    value.TextXAlignment = Enum.TextXAlignment.Right
-
-    on(row.Activated, function()
-        index = index % #options + 1
-        value.Text = options[index] .. "  >"
-    end)
-end
-
-local function slider(page, name, minimum, maximum, initial, changed)
-    local row = card(page, 88)
-
-    label(
-        row, name, 16,
-        UDim2.fromOffset(17, 12),
-        UDim2.new(1, -110, 0, 24)
-    )
-
-    local value = label(
-        row, tostring(initial), 14,
-        UDim2.new(1, -85, 0, 12),
-        UDim2.fromOffset(65, 24),
-        C.accent
-    )
-    value.TextXAlignment = Enum.TextXAlignment.Right
-
-    local hit = new("TextButton", {
-        Position = UDim2.fromOffset(20, 43),
-        Size = UDim2.new(1, -40, 0, 30),
-        BackgroundTransparency = 1,
-        Text = "",
-        AutoButtonColor = false,
-    }, row)
-
-    local track = new("Frame", {
-        Position = UDim2.new(0, 0, 0.5, -2),
-        Size = UDim2.new(1, 0, 0, 4),
-        BackgroundColor3 = C.edge,
-        BorderSizePixel = 0,
-    }, hit)
-    corner(track, 2)
-
-    local fill = new("Frame", {
-        BackgroundColor3 = C.accent,
-        BorderSizePixel = 0,
-    }, track)
-    corner(fill, 2)
-
-    local knob = new("Frame", {
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Size = UDim2.fromOffset(12, 12),
-        BackgroundColor3 = C.text,
-        BorderSizePixel = 0,
-    }, track)
-    corner(knob, 6)
-
-    local function set(number)
-        number = math.clamp(
-            math.floor(number + 0.5), minimum, maximum
-        )
-        local ratio = (number - minimum) / (maximum - minimum)
-
-        value.Text = tostring(number)
-        fill.Size = UDim2.new(ratio, 0, 1, 0)
-        knob.Position = UDim2.fromScale(ratio, 0.5)
-
-        if changed then changed(number) end
+  if playerRow then
+   for _,child in ipairs(row:GetChildren()) do
+    if child:IsA("TextLabel") and child.Position.Y.Offset==44 then
+     child.Text="@"..Players.LocalPlayer.Name
     end
+   end
+  end
+ end
 
-    local function update(input)
-        if track.AbsoluteSize.X <= 0 then return end
-
-        local ratio = math.clamp(
-            (input.Position.X - track.AbsolutePosition.X)
-                / track.AbsoluteSize.X,
-            0, 1
-        )
-        set(minimum + ratio * (maximum - minimum))
-    end
-
-    local held
-
-    on(hit.InputBegan, function(input)
-        if isPointer(input) then
-            held = input
-            update(input)
-        end
-    end)
-
-    on(Input.InputChanged, function(input)
-        if held and isMove(input, held) then
-            update(input)
-        end
-    end)
-
-    on(Input.InputEnded, function(input)
-        if held and isRelease(input, held) then
-            held = nil
-        end
-    end)
-
-    on(Input.WindowFocusReleased, function()
-        held = nil
-    end)
-
-    set(initial)
+ applySize()
+ print("LEX_APPEARANCE_SETTINGS_READY")
 end
-
-local tabs = {
-    {"Status", "▥", "View local and server information."},
-    {"Farm Settings", "⚙", "Farm controls preview."},
-    {"Main", "⌂", "Main controls preview."},
-    {"Multi Farm", "◇", "Multi-farm controls preview."},
-    {"Quests", "≡", "Quest controls preview."},
-    {"Items", "□", "Item controls preview."},
-    {"Settings", "⋮", "Customize the Lex Hub interface."},
-}
-
-local function selectTab(name)
-    for pageName, page in pairs(pages) do
-        page.Visible = pageName == name
-    end
-
-    for pageName, entry in pairs(entries) do
-        local active = pageName == name
-
-        entry.button.BackgroundTransparency = active and 0.05 or 1
-        entry.stroke.Enabled = active
-        entry.marker.Visible = active
-        entry.text.TextColor3 = active and C.text or C.muted
-        entry.icon.TextColor3 = active and C.accent or C.muted
-    end
-
-    title.Text = name
-    subtitle.Text = entries[name].description
-end
-
-for index, tab in ipairs(tabs) do
-    local name, glyph, description = tab[1], tab[2], tab[3]
-
-    local page = new("ScrollingFrame", {
-        Name = name,
-        Position = UDim2.fromOffset(22, 98),
-        Size = UDim2.new(1, -44, 1, -118),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        CanvasSize = UDim2.new(),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = C.accent,
-        ScrollingDirection = Enum.ScrollingDirection.Y,
-        Visible = false,
-    }, content)
-
-    new("UIListLayout", {
-        Padding = UDim.new(0, 10),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-    }, page)
-
-    new("UIPadding", {
-        PaddingTop = UDim.new(0, 2),
-        PaddingLeft = UDim.new(0, 2),
-        PaddingRight = UDim.new(0, 7),
-        PaddingBottom = UDim.new(0, 6),
-    }, page)
-
-    pages[name] = page
-
-    local button = new("TextButton", {
-        Size = UDim2.new(1, 0, 0, 49),
-        LayoutOrder = index,
-        BackgroundColor3 = C.card,
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        Text = "",
-        AutoButtonColor = false,
-    }, nav)
-
-    corner(button, 12)
-    border(button)
-
-    local marker = new("Frame", {
-        Position = UDim2.fromOffset(0, 12),
-        Size = UDim2.fromOffset(3, 25),
-        BackgroundColor3 = C.accent,
-        BorderSizePixel = 0,
-    }, button)
-    corner(marker, 2)
-
-    entries[name] = {
-        button = button,
-        marker = marker,
-        stroke = button:FindFirstChildOfClass("UIStroke"),
-        description = description,
-        icon = label(
-            button, glyph, 24,
-            UDim2.fromOffset(16, 10),
-            UDim2.fromOffset(30, 30),
-            C.muted
-        ),
-        text = label(
-            button, name, 16,
-            UDim2.fromOffset(58, 13),
-            UDim2.new(1, -67, 0, 24),
-            C.muted
-        ),
-    }
-
-    on(button.Activated, function()
-        selectTab(name)
-    end)
-end
-
-on(search:GetPropertyChangedSignal("Text"), function()
-    local query = search.Text:lower()
-        :gsub("^%s+", "")
-        :gsub("%s+$", "")
-
-    for name, entry in pairs(entries) do
-        entry.button.Visible =
-            name:lower():find(query, 1, true) ~= nil
-    end
-end)
-
-section(pages.Status, "Server Stats")
-info(pages.Status, "Place Id", tostring(game.PlaceId))
-info(pages.Status, "Session Time", "UI Preview")
-info(pages.Status, "Server Age", "N/A")
-
-section(pages.Status, "Local Stats")
-info(pages.Status, "Elite Progress", "N/A")
-info(pages.Status, "Player", Players.LocalPlayer.DisplayName)
-
-section(pages["Farm Settings"], "Combat")
-choice(
-    pages["Farm Settings"], "Weapon",
-    {"Melee", "Sword", "Blox Fruit", "Gun"}
-)
-toggle(pages["Farm Settings"], "Bring Mobs")
-toggle(pages["Farm Settings"], "Fast Attack")
-slider(pages["Farm Settings"], "Farm Distance", 0, 100, 25)
-
-section(pages.Main, "Farming")
-toggle(pages.Main, "Auto Farm")
-toggle(pages.Main, "Auto Quest")
-choice(pages.Main, "Farm Mode", {"Level", "Nearest", "Boss"})
-
-section(pages["Multi Farm"], "Multi Farm")
-for _, name in ipairs({"Bone Farm", "Cake Farm", "Material Farm"}) do
-    toggle(pages["Multi Farm"], name)
-end
-
-section(pages.Quests, "Quests")
-toggle(pages.Quests, "Auto Accept Quest")
-toggle(pages.Quests, "Elite Quest")
-
-section(pages.Items, "Items")
-toggle(pages.Items, "Auto Store Fruit")
-toggle(pages.Items, "Collect Chests")
-
-section(pages.Settings, "Appearance")
-slider(
-    pages.Settings, "Background Visibility",
-    10, 65, 26,
-    function(value)
-        shade.BackgroundTransparency = value / 100
-    end
-)
-
-info(
-    pages.Settings,
-    "Window Controls",
-    "Drag the header. Tap the floating logo to hide / open."
-)
-info(
-    pages.Settings,
-    "Keyboard",
-    "Right Shift: hide / open"
-)
-
-selectTab("Status")
-print("[Lex Hub] UI ready. No gameplay functions are attached.")
+-- END LEX APPEARANCE SETTINGS
