@@ -1,237 +1,188 @@
+-- Lex Hub: GUI bridge + text settings + Main module.
 repeat task.wait() until game:IsLoaded()
 
 local ROOT="https://raw.githubusercontent.com/anyeuemnhat/GUI/"
+local GUI_COMMIT="1b50b7c37d243dd1b32152da5b8b37a0de0632eb"
 
-local music=[==[
-if not gui:GetAttribute("LexMusicV1") then
- gui:SetAttribute("LexMusicV1",true)
+local extension=[===[
+if not gui:GetAttribute("LexTextV1") then
+ gui:SetAttribute("LexTextV1",true)
+ local percent,bold=120,true
+ local saved={}
+ local skip={[minimize]=true,[close]=true}
+ for _,entry in pairs(entries) do skip[entry.icon]=true end
 
- local songs={
-  {name="Mùa thu và lời xin lỗi",id="120649823040872"}
- }
-
- local selected,opened,alive,requested,ticket=1,false,true,false,0
-
- local sound=new("Sound",{
-  Name="LexHubMusic",
-  SoundId="rbxassetid://"..songs[1].id,
-  Volume=.5,
-  Looped=false,
- },game:GetService("SoundService"))
-
- gui.Destroying:Connect(function()
-  alive=false
-  requested=false
-  ticket=ticket+1
-  sound:Stop()
-  sound:Destroy()
- end)
-
- local heading=label(pages.Settings,"Nghe nhạc",16,
-  UDim2.new(),UDim2.new(1,0,0,30),C.accent)
- heading.LayoutOrder=-20
-
- local panel=card(pages.Settings,224)
- panel.Name="LexMusicPanel"
- panel.LayoutOrder=-19
- panel.BackgroundTransparency=.6
-
- label(panel,"Danh sách bài nhạc",14,
-  UDim2.fromOffset(18,12),UDim2.new(1,-36,0,22),C.muted)
-
- local selector=new("TextButton",{
-  Name="LexMusicSelector",
-  Position=UDim2.fromOffset(18,43),
-  Size=UDim2.new(1,-36,0,40),
-  BackgroundColor3=C.base,
-  BackgroundTransparency=.12,
-  BorderSizePixel=0,
-  Text=songs[1].name.."  v",
-  TextSize=15,
-  TextColor3=C.text,
-  Font=Enum.Font.Gotham,
- },panel)
- corner(selector,9)
- border(selector)
-
- local listHeight=math.min(#songs*42+8,176)
-
- local list=new("ScrollingFrame",{
-  Name="LexMusicList",
-  Position=UDim2.fromOffset(18,89),
-  Size=UDim2.new(1,-36,0,listHeight),
-  BackgroundColor3=C.base,
-  BackgroundTransparency=.08,
-  BorderSizePixel=0,
-  Visible=false,
-  CanvasSize=UDim2.new(),
-  AutomaticCanvasSize=Enum.AutomaticSize.Y,
-  ScrollBarThickness=2,
-  ScrollBarImageColor3=C.accent,
-  ScrollingDirection=Enum.ScrollingDirection.Y,
- },panel)
- corner(list,9)
-
- new("UIListLayout",{
-  Padding=UDim.new(0,4),
-  SortOrder=Enum.SortOrder.LayoutOrder,
- },list)
-
- new("UIPadding",{
-  PaddingTop=UDim.new(0,4),
-  PaddingLeft=UDim.new(0,4),
-  PaddingRight=UDim.new(0,4),
-  PaddingBottom=UDim.new(0,4),
- },list)
-
- local controls=new("Frame",{
-  Position=UDim2.fromOffset(18,101),
-  Size=UDim2.new(1,-36,0,38),
-  BackgroundTransparency=1,
- },panel)
-
- local status=label(panel,"Chưa phát nhạc.",13,
-  UDim2.fromOffset(18,152),UDim2.new(1,-36,0,54),C.muted)
- status.TextWrapped=true
- status.TextTruncate=Enum.TextTruncate.None
- status.TextYAlignment=Enum.TextYAlignment.Top
-
- local function layout()
-  local extra=opened and listHeight+8 or 0
-  list.Visible=opened
-  panel.Size=UDim2.new(1,-2,0,224+extra)
-  controls.Position=UDim2.fromOffset(18,101+extra)
-  status.Position=UDim2.fromOffset(18,152+extra)
+ local function capture(o)
+  if saved[o] or skip[o] then return false end
+  if not(o:IsA("TextLabel")
+   or o:IsA("TextButton") or o:IsA("TextBox")) then
+   return false
+  end
+  local p=o
+  while p and p~=gui do
+   if p:GetAttribute("LexTextControl") then return false end
+   p=p.Parent
+  end
+  if o.Text=="" then return false end
+  local limit
+  if o:IsA("TextButton") then
+   limit=o:FindFirstChildOfClass("UITextSizeConstraint")
+    or new("UITextSizeConstraint",{},o)
+   o.TextScaled=true
+  end
+  saved[o]={
+   size=o.TextSize,font=o.Font,box=o.Size,
+   pos=o.Position,limit=limit,
+  }
+  return true
  end
 
- local function stop(message)
-  ticket=ticket+1
-  requested=false
-  sound:Stop()
-  status.Text=message or "Đã dừng. Bấm Phát để nghe lại từ đầu."
- end
+ for _,o in ipairs(gui:GetDescendants()) do capture(o) end
 
- on(selector.Activated,function()
-  opened=not opened
-  layout()
- end)
-
- for i,song in ipairs(songs) do
-  local option=new("TextButton",{
-   Name="LexMusicOption"..i,
-   LayoutOrder=i,
-   Size=UDim2.new(1,-3,0,38),
-   BackgroundColor3=C.card,
-   BackgroundTransparency=.2,
-   BorderSizePixel=0,
-   Text=song.name,
-   TextColor3=C.text,
-   TextSize=14,
-   Font=Enum.Font.Gotham,
-  },list)
-  corner(option,7)
-
-  on(option.Activated,function()
-   if selected~=i then
-    stop("Đã chọn: "..song.name)
-    selected=i
-    sound.SoundId="rbxassetid://"..song.id
+ local function apply()
+  for o,b in pairs(saved) do
+   if o.Parent then
+    local n=math.clamp(
+     math.floor(b.size*percent/100+.5),8,48
+    )
+    o.Font=bold and Enum.Font.GothamBold or b.font
+    o.TextSize=n
+    if b.limit then
+     b.limit.MinTextSize=1
+     b.limit.MaxTextSize=n
+     b.limit.MinTextSize=math.min(b.size,n)
+    end
+    if o:IsA("TextLabel") and b.box.Y.Scale==0 then
+     o.Size=UDim2.new(
+      b.box.X.Scale,b.box.X.Offset,0,
+      math.max(b.box.Y.Offset,n+4)
+     )
+    end
    end
-   selector.Text=song.name.."  v"
-   opened=false
-   layout()
-  end)
- end
-
- local function button(name,title,index)
-  local b=new("TextButton",{
-   Name=name,
-   Position=UDim2.new((index-1)/3,0,0,0),
-   Size=UDim2.new(1/3,-7,1,0),
-   BackgroundColor3=C.card,
-   BackgroundTransparency=.12,
-   BorderSizePixel=0,
-   Text=title,
-   TextColor3=C.text,
-   TextSize=14,
-   Font=Enum.Font.GothamBold,
-  },controls)
-  corner(b,9)
-  border(b)
-  return b
- end
-
- local play=button("LexMusicPlay","Phát",1)
- local halt=button("LexMusicStop","Dừng",2)
- local loop=button("LexMusicLoop","Lặp: Tắt",3)
-
- on(play.Activated,function()
-  if requested and sound.Playing then return end
-
-  requested=true
-  ticket=ticket+1
-  local current=ticket
-
-  local ok,err=pcall(function() sound:Play() end)
-  if not ok then
-   requested=false
-   status.Text="Không phát được: "..tostring(err)
-   return
   end
 
-  status.Text=sound.IsLoaded
-   and ("Đang phát: "..songs[selected].name)
-   or "Đang tải nhạc..."
+  local b=saved[brandTitle]
+  if b then
+   brandTitle.Position=UDim2.new(
+    b.pos.X.Scale,b.pos.X.Offset,b.pos.Y.Scale,
+    math.min(b.pos.Y.Offset,52-brandTitle.Size.Y.Offset)
+   )
+  end
 
-  task.delay(25,function()
-   if alive and requested and ticket==current and not sound.IsLoaded then
-    stop("Chưa tải được audio. Kiểm tra trạng thái/quyền dùng audio trong game hoặc thử lại.")
-   end
+  local s=saved[subtitle]
+  if s then
+   subtitle.Position=UDim2.new(
+    s.pos.X.Scale,s.pos.X.Offset,s.pos.Y.Scale,
+    math.max(
+     s.pos.Y.Offset,
+     title.Position.Y.Offset+title.Size.Y.Offset+3
+    )
+   )
+  end
+ end
+
+ local heading=label(
+  pages.Settings,"Chữ",16,
+  UDim2.new(),UDim2.new(1,0,0,30),C.accent
+ )
+ heading.LayoutOrder=-40
+ heading:SetAttribute("LexTextControl",true)
+
+ local button=card(pages.Settings,58,true)
+ button.Name="LexBoldButton"
+ button.LayoutOrder=-39
+ button:SetAttribute("LexTextControl",true)
+ button.BackgroundTransparency=.6
+ button.Text="Chữ đậm: Bật"
+ button.Font=Enum.Font.GothamBold
+ button.TextSize=17
+ button.TextColor3=C.accent
+
+ on(button.Activated,function()
+  bold=not bold
+  button.Text=bold and "Chữ đậm: Bật" or "Chữ đậm: Tắt"
+  apply()
+ end)
+
+ local before={}
+ for _,o in ipairs(pages.Settings:GetChildren()) do
+  before[o]=true
+ end
+
+ slider(
+  pages.Settings,"Cỡ chữ (%)",80,140,percent,
+  function(n) percent=n;apply() end
+ )
+
+ for _,o in ipairs(pages.Settings:GetChildren()) do
+  if not before[o] and o:IsA("Frame") then
+   o.Name="LexTextSizeControl"
+   o.LayoutOrder=-38
+   o:SetAttribute("LexTextControl",true)
+   o.BackgroundTransparency=.6
+  end
+ end
+
+ on(gui.DescendantAdded,function(o)
+  task.defer(function()
+   if gui.Parent and capture(o) then apply() end
   end)
  end)
 
- on(halt.Activated,function()
-  stop()
- end)
-
- on(loop.Activated,function()
-  sound.Looped=not sound.Looped
-  loop.Text=sound.Looped and "Lặp: Bật" or "Lặp: Tắt"
-  loop.BackgroundColor3=sound.Looped and C.accent or C.card
-  loop.TextColor3=sound.Looped and C.base or C.text
- end)
-
- on(sound.Loaded,function()
-  if alive and requested and sound.IsLoaded then
-   status.Text="Đang phát: "..songs[selected].name
-  end
- end)
-
- on(sound.Ended,function()
-  if alive and not sound.Looped then
-   requested=false
-   ticket=ticket+1
-   status.Text="Đã hết bài. Bấm Phát để nghe lại."
-  end
- end)
-
- layout()
- print("LEX_MUSIC_READY")
+ apply()
+ print("LEX_TEXT_SETTINGS_READY")
 end
-]==]
+
+do
+ local source=game:HttpGet(
+  "https://raw.githubusercontent.com/anyeuemnhat/GUI/refs/heads/main/Functions/Main.lua"
+ )
+ assert(
+  type(source)=="string" and #source>0,
+  "Main.lua download is empty"
+ )
+ source=source:gsub("^\239\187\191","")
+
+ local run,compileError=loadstring(source,"@Functions/Main.lua")
+ assert(run,"Main.lua compile error: "..tostring(compileError))
+
+ local module=run()
+ assert(
+  type(module)=="table" and type(module.Mount)=="function",
+  "Main.lua must return a table with Mount(ctx)"
+ )
+
+ local controller=module.Mount({
+  gui=gui,pages=pages,new=new,card=card,label=label,
+  section=section,corner=corner,border=border,
+  slider=slider,on=on,C=C,Players=Players,
+ })
+ assert(controller~=nil,"Main.Mount did not return a controller")
+ print("LEX_MAIN_MODULE_READY")
+end
+]===]
 
 local success,err=pcall(function()
- local base=game:HttpGet(
-  ROOT.."a0c08548318a84b4fd07014db7caedd6c7c86e38/GuiMain"
+ local source=game:HttpGet(ROOT..GUI_COMMIT.."/GuiMain")
+ assert(
+  type(source)=="string" and #source>0,
+  "GUI download is empty"
  )
- local settings=game:HttpGet(
-  ROOT.."c49f776d74a651790495909619ef674f52655e9a/GuiMain"
+ source=source:gsub("^\239\187\191","")
+ assert(
+  source:find("local music=",1,true),
+  "Pinned GUI music payload was not found"
  )
 
+ local patched,count=source:gsub("%]==%]",function()
+  return "\n"..extension.."\n]==]"
+ end,1)
+ assert(count==1,"Pinned GUI music payload has no closing delimiter")
+
  local run,compileError=loadstring(
-  base.."\n"..settings.."\n"..music
+  patched,"@LexHub/GuiMainBridge"
  )
- assert(run,compileError)
+ assert(run,"GUI bridge compile error: "..tostring(compileError))
  run()
 end)
 
@@ -245,388 +196,4 @@ if not success then
   })
  end)
 end
-local farm = [==[
-do
- local Players = game:GetService("Players")
- local player = Players.LocalPlayer
-
- local cfg = {
-  Enabled = false,
-  Mode = "Farm LV",
-  Distance = 15,
-  Radius = 100,
-  SearchRadius = 600,
-  AttackDelay = 0.25
- }
-
- getgenv().LexFarm = cfg
-
- section(pages.Main, "LEX HUB | AUTO FARM")
-
- local panel = card(pages.Main, 320)
- panel.Name = "LexFarmPanel"
-
- local status = label(
-  panel, "Auto Farm: OFF", 16,
-  UDim2.fromOffset(18,12),
-  UDim2.new(1,-36,0,30),
-  C.accent
- )
-
- local function addButton(name,y,callback)
-  local b = new("TextButton",{
-   Name=name,
-   Position=UDim2.fromOffset(18,y),
-   Size=UDim2.new(1,-36,0,42),
-   BackgroundColor3=C.card,
-   BorderSizePixel=0,
-   Text=name,
-   TextColor3=C.text,
-   TextSize=15,
-   Font=Enum.Font.GothamBold,
-  },panel)
-
-  corner(b,9)
-  border(b)
-  on(b.Activated,callback)
-  return b
- end
-
- local function start(mode)
-  cfg.Enabled=true
-  cfg.Mode=mode
-  status.Text="Running: "..mode
- end
-
- addButton("FARM LV",50,function()
-  start("Farm LV")
- end)
-
- addButton("FARM DISTANCE",100,function()
-  start("Farm Distance")
- end)
-
- addButton("FARM AURA",150,function()
-  start("Farm Aura")
- end)
-
- addButton("STOP FARM",200,function()
-  cfg.Enabled=false
-  status.Text="Auto Farm: OFF"
- end)
-
- local info=label(
-  panel,"Distance: 15 | Aura: 100",13,
-  UDim2.fromOffset(18,260),
-  UDim2.new(1,-36,0,30),
-  C.muted
- )
-
- local function updateInfo()
-  info.Text="Distance: "..cfg.Distance..
-   " | Aura: "..cfg.Radius
- end
-
- local function getCharacter()
-  local char=player.Character
-  if not char then return end
-
-  local hum=char:FindFirstChildOfClass("Humanoid")
-  local root=char:FindFirstChild("HumanoidRootPart")
-
-  if hum and root and hum.Health>0 then
-   return char,hum,root
-  end
- end
-
- local function findEnemy(position)
-  local enemies=workspace:FindFirstChild("Enemies")
-  if not enemies then return end
-
-  local nearest=nil
-  local maxDistance=cfg.Mode=="Farm Aura"
-   and cfg.Radius or cfg.SearchRadius
-
-  for _,mob in ipairs(enemies:GetChildren()) do
-   local hum=mob:FindFirstChildOfClass("Humanoid")
-   local root=mob:FindFirstChild("HumanoidRootPart")
-
-   if hum and root and hum.Health>0 then
-    local distance=(root.Position-position).Magnitude
-
-    if distance<maxDistance then
-     maxDistance=distance
-     nearest=root
-    end
-   end
-  end
-
-  return nearest
- end
-
- local function equip(char,hum)
-  local tool=char:FindFirstChildOfClass("Tool")
-  if tool then return tool end
-
-  local backpack=player:FindFirstChildOfClass("Backpack")
-  if not backpack then return end
-
-  tool=backpack:FindFirstChildOfClass("Tool")
-
-  if tool then
-   hum:EquipTool(tool)
-  end
-
-  return tool
- end
-
- local alive=true
-
- gui.Destroying:Connect(function()
-  alive=false
-  cfg.Enabled=false
- end)
-
- task.spawn(function()
-  while alive do
-   task.wait(cfg.AttackDelay)
-
-   if cfg.Enabled then
-    local char,hum,root=getCharacter()
-
-    if char then
-     local target=findEnemy(root.Position)
-
-     if target then
-      local offset=cfg.Mode=="Farm Distance"
-       and cfg.Distance or 8
-
-      local delta=root.Position-target.Position
-
-      if delta.Magnitude<0.1 then
-       delta=Vector3.new(0,0,1)
-      end
-
-      local destination=target.Position+
-       delta.Unit*offset
-
-      local distance=(root.Position-target.Position).Magnitude
-
-      if distance>offset+3 then
-       hum:MoveTo(destination)
-      else
-       hum:MoveTo(root.Position)
-      end
-
-      local tool=equip(char,hum)
-
-      if tool and tool.Parent==char and distance<=20 then
-       pcall(function()
-        tool:Activate()
-       end)
-      end
-
-      status.Text=cfg.Mode.." | "..target.Parent.Name
-     else
-      status.Text="Waiting for enemies..."
-     end
-    end
-   end
-  end
- end)
-
- print("LEX_FARM_READY")
-end
-]==]
-local farm = [==[
-do
- local player=Players.LocalPlayer
- local cfg={
-  Enabled=false,
-  AutoQuest=false,
-  Mode="Level",
-  Distance=25,
-  AuraRadius=100,
-  Weapon="Melee",
-  AttackDelay=.3,
-  Status="Stopped"
- }
-
- getgenv().LexFarm=cfg
-
- local function findControl(page,name)
-  for _,row in ipairs(page:GetChildren()) do
-   if row:IsA("TextButton") then
-    for _,child in ipairs(row:GetChildren()) do
-     if child:IsA("TextLabel")
-      and child.Text==name then
-      return row
-     end
-    end
-   end
-  end
- end
-
- local function connectToggle(page,name,field)
-  local row=findControl(page,name)
-  if not row then
-   warn("Missing control: "..name)
-   return
-  end
-
-  on(row.Activated,function()
-   cfg[field]=not cfg[field]
-   print("LEX:",field,cfg[field])
-  end)
- end
-
- connectToggle(pages.Main,"Auto Farm","Enabled")
- connectToggle(pages.Main,"Auto Quest","AutoQuest")
- connectToggle(
-  pages.Quests,"Auto Accept Quest","AutoQuest"
- )
-
- local modes={"Level","Nearest","Boss"}
- local modeIndex=1
- local modeRow=findControl(pages.Main,"Farm Mode")
-
- if modeRow then
-  on(modeRow.Activated,function()
-   modeIndex=modeIndex%#modes+1
-   cfg.Mode=modes[modeIndex]
-  end)
- end
-
- local weaponRow=findControl(
-  pages["Farm Settings"],"Weapon"
- )
-
- local weapons={"Melee","Sword","Blox Fruit","Gun"}
- local weaponIndex=1
-
- if weaponRow then
-  on(weaponRow.Activated,function()
-   weaponIndex=weaponIndex%#weapons+1
-   cfg.Weapon=weapons[weaponIndex]
-  end)
- end
-
- local function getCharacter()
-  local char=player.Character
-  if not char then return end
-
-  local hum=char:FindFirstChildOfClass("Humanoid")
-  local root=char:FindFirstChild("HumanoidRootPart")
-
-  if hum and root and hum.Health>0 then
-   return char,hum,root
-  end
- end
-
- local function getTarget(position)
-  local folder=workspace:FindFirstChild("Enemies")
-  if not folder then
-   cfg.Status="Enemies folder not found"
-   return
-  end
-
-  local best
-  local bestDistance=cfg.AuraRadius
-
-  for _,mob in ipairs(folder:GetChildren()) do
-   local hp=mob:FindFirstChildOfClass("Humanoid")
-   local root=mob:FindFirstChild("HumanoidRootPart")
-
-   if hp and root and hp.Health>0 then
-    local distance=(root.Position-position).Magnitude
-
-    local allowed=true
-
-    if cfg.Mode=="Boss" then
-     allowed=mob.Name:lower():find("boss",1,true)~=nil
-    end
-
-    if allowed and distance<bestDistance then
-     best=root
-     bestDistance=distance
-    end
-   end
-  end
-
-  return best
- end
-
- local function equip(char,hum)
-  local tool=char:FindFirstChildOfClass("Tool")
-  if tool then return tool end
-
-  local bag=player:FindFirstChildOfClass("Backpack")
-  if not bag then return end
-
-  tool=bag:FindFirstChildOfClass("Tool")
-  if tool then
-   hum:EquipTool(tool)
-  end
-
-  return tool
- end
-
- local alive=true
-
- gui.Destroying:Connect(function()
-  alive=false
-  cfg.Enabled=false
- end)
-
- task.spawn(function()
-  while alive do
-   task.wait(cfg.AttackDelay)
-
-   if cfg.Enabled then
-    local char,hum,root=getCharacter()
-
-    if char then
-     local target=getTarget(root.Position)
-
-     if target then
-      local delta=root.Position-target.Position
-
-      if delta.Magnitude<.1 then
-       delta=Vector3.new(0,0,1)
-      end
-
-      local destination=target.Position
-       +delta.Unit*cfg.Distance
-
-      local distance=
-       (root.Position-target.Position).Magnitude
-
-      if distance>cfg.Distance+3 then
-       hum:MoveTo(destination)
-      end
-
-      local tool=equip(char,hum)
-
-      if tool and tool.Parent==char
-       and distance<=20 then
-       pcall(function()
-        tool:Activate()
-       end)
-      end
-
-      cfg.Status="Target: "..target.Parent.Name
-     else
-      cfg.Status="No target in range"
-     end
-    else
-     cfg.Status="Waiting for character"
-    end
-   else
-    cfg.Status="Stopped"
-   end
-  end
- end)
-
- print("LEX FARM CONTROLS CONNECTED")
-end
-]==]
+-- END LEX HUB MAIN BRIDGE
