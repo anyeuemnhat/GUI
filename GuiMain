@@ -438,3 +438,195 @@ do
  print("LEX_FARM_READY")
 end
 ]==]
+local farm = [==[
+do
+ local player=Players.LocalPlayer
+ local cfg={
+  Enabled=false,
+  AutoQuest=false,
+  Mode="Level",
+  Distance=25,
+  AuraRadius=100,
+  Weapon="Melee",
+  AttackDelay=.3,
+  Status="Stopped"
+ }
+
+ getgenv().LexFarm=cfg
+
+ local function findControl(page,name)
+  for _,row in ipairs(page:GetChildren()) do
+   if row:IsA("TextButton") then
+    for _,child in ipairs(row:GetChildren()) do
+     if child:IsA("TextLabel")
+      and child.Text==name then
+      return row
+     end
+    end
+   end
+  end
+ end
+
+ local function connectToggle(page,name,field)
+  local row=findControl(page,name)
+  if not row then
+   warn("Missing control: "..name)
+   return
+  end
+
+  on(row.Activated,function()
+   cfg[field]=not cfg[field]
+   print("LEX:",field,cfg[field])
+  end)
+ end
+
+ connectToggle(pages.Main,"Auto Farm","Enabled")
+ connectToggle(pages.Main,"Auto Quest","AutoQuest")
+ connectToggle(
+  pages.Quests,"Auto Accept Quest","AutoQuest"
+ )
+
+ local modes={"Level","Nearest","Boss"}
+ local modeIndex=1
+ local modeRow=findControl(pages.Main,"Farm Mode")
+
+ if modeRow then
+  on(modeRow.Activated,function()
+   modeIndex=modeIndex%#modes+1
+   cfg.Mode=modes[modeIndex]
+  end)
+ end
+
+ local weaponRow=findControl(
+  pages["Farm Settings"],"Weapon"
+ )
+
+ local weapons={"Melee","Sword","Blox Fruit","Gun"}
+ local weaponIndex=1
+
+ if weaponRow then
+  on(weaponRow.Activated,function()
+   weaponIndex=weaponIndex%#weapons+1
+   cfg.Weapon=weapons[weaponIndex]
+  end)
+ end
+
+ local function getCharacter()
+  local char=player.Character
+  if not char then return end
+
+  local hum=char:FindFirstChildOfClass("Humanoid")
+  local root=char:FindFirstChild("HumanoidRootPart")
+
+  if hum and root and hum.Health>0 then
+   return char,hum,root
+  end
+ end
+
+ local function getTarget(position)
+  local folder=workspace:FindFirstChild("Enemies")
+  if not folder then
+   cfg.Status="Enemies folder not found"
+   return
+  end
+
+  local best
+  local bestDistance=cfg.AuraRadius
+
+  for _,mob in ipairs(folder:GetChildren()) do
+   local hp=mob:FindFirstChildOfClass("Humanoid")
+   local root=mob:FindFirstChild("HumanoidRootPart")
+
+   if hp and root and hp.Health>0 then
+    local distance=(root.Position-position).Magnitude
+
+    local allowed=true
+
+    if cfg.Mode=="Boss" then
+     allowed=mob.Name:lower():find("boss",1,true)~=nil
+    end
+
+    if allowed and distance<bestDistance then
+     best=root
+     bestDistance=distance
+    end
+   end
+  end
+
+  return best
+ end
+
+ local function equip(char,hum)
+  local tool=char:FindFirstChildOfClass("Tool")
+  if tool then return tool end
+
+  local bag=player:FindFirstChildOfClass("Backpack")
+  if not bag then return end
+
+  tool=bag:FindFirstChildOfClass("Tool")
+  if tool then
+   hum:EquipTool(tool)
+  end
+
+  return tool
+ end
+
+ local alive=true
+
+ gui.Destroying:Connect(function()
+  alive=false
+  cfg.Enabled=false
+ end)
+
+ task.spawn(function()
+  while alive do
+   task.wait(cfg.AttackDelay)
+
+   if cfg.Enabled then
+    local char,hum,root=getCharacter()
+
+    if char then
+     local target=getTarget(root.Position)
+
+     if target then
+      local delta=root.Position-target.Position
+
+      if delta.Magnitude<.1 then
+       delta=Vector3.new(0,0,1)
+      end
+
+      local destination=target.Position
+       +delta.Unit*cfg.Distance
+
+      local distance=
+       (root.Position-target.Position).Magnitude
+
+      if distance>cfg.Distance+3 then
+       hum:MoveTo(destination)
+      end
+
+      local tool=equip(char,hum)
+
+      if tool and tool.Parent==char
+       and distance<=20 then
+       pcall(function()
+        tool:Activate()
+       end)
+      end
+
+      cfg.Status="Target: "..target.Parent.Name
+     else
+      cfg.Status="No target in range"
+     end
+    else
+     cfg.Status="Waiting for character"
+    end
+   else
+    cfg.Status="Stopped"
+   end
+  end
+ end)
+
+ print("LEX FARM CONTROLS CONNECTED")
+end
+]==]
