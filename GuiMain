@@ -245,3 +245,196 @@ if not success then
   })
  end)
 end
+local farm = [==[
+do
+ local Players = game:GetService("Players")
+ local player = Players.LocalPlayer
+
+ local cfg = {
+  Enabled = false,
+  Mode = "Farm LV",
+  Distance = 15,
+  Radius = 100,
+  SearchRadius = 600,
+  AttackDelay = 0.25
+ }
+
+ getgenv().LexFarm = cfg
+
+ section(pages.Main, "LEX HUB | AUTO FARM")
+
+ local panel = card(pages.Main, 320)
+ panel.Name = "LexFarmPanel"
+
+ local status = label(
+  panel, "Auto Farm: OFF", 16,
+  UDim2.fromOffset(18,12),
+  UDim2.new(1,-36,0,30),
+  C.accent
+ )
+
+ local function addButton(name,y,callback)
+  local b = new("TextButton",{
+   Name=name,
+   Position=UDim2.fromOffset(18,y),
+   Size=UDim2.new(1,-36,0,42),
+   BackgroundColor3=C.card,
+   BorderSizePixel=0,
+   Text=name,
+   TextColor3=C.text,
+   TextSize=15,
+   Font=Enum.Font.GothamBold,
+  },panel)
+
+  corner(b,9)
+  border(b)
+  on(b.Activated,callback)
+  return b
+ end
+
+ local function start(mode)
+  cfg.Enabled=true
+  cfg.Mode=mode
+  status.Text="Running: "..mode
+ end
+
+ addButton("FARM LV",50,function()
+  start("Farm LV")
+ end)
+
+ addButton("FARM DISTANCE",100,function()
+  start("Farm Distance")
+ end)
+
+ addButton("FARM AURA",150,function()
+  start("Farm Aura")
+ end)
+
+ addButton("STOP FARM",200,function()
+  cfg.Enabled=false
+  status.Text="Auto Farm: OFF"
+ end)
+
+ local info=label(
+  panel,"Distance: 15 | Aura: 100",13,
+  UDim2.fromOffset(18,260),
+  UDim2.new(1,-36,0,30),
+  C.muted
+ )
+
+ local function updateInfo()
+  info.Text="Distance: "..cfg.Distance..
+   " | Aura: "..cfg.Radius
+ end
+
+ local function getCharacter()
+  local char=player.Character
+  if not char then return end
+
+  local hum=char:FindFirstChildOfClass("Humanoid")
+  local root=char:FindFirstChild("HumanoidRootPart")
+
+  if hum and root and hum.Health>0 then
+   return char,hum,root
+  end
+ end
+
+ local function findEnemy(position)
+  local enemies=workspace:FindFirstChild("Enemies")
+  if not enemies then return end
+
+  local nearest=nil
+  local maxDistance=cfg.Mode=="Farm Aura"
+   and cfg.Radius or cfg.SearchRadius
+
+  for _,mob in ipairs(enemies:GetChildren()) do
+   local hum=mob:FindFirstChildOfClass("Humanoid")
+   local root=mob:FindFirstChild("HumanoidRootPart")
+
+   if hum and root and hum.Health>0 then
+    local distance=(root.Position-position).Magnitude
+
+    if distance<maxDistance then
+     maxDistance=distance
+     nearest=root
+    end
+   end
+  end
+
+  return nearest
+ end
+
+ local function equip(char,hum)
+  local tool=char:FindFirstChildOfClass("Tool")
+  if tool then return tool end
+
+  local backpack=player:FindFirstChildOfClass("Backpack")
+  if not backpack then return end
+
+  tool=backpack:FindFirstChildOfClass("Tool")
+
+  if tool then
+   hum:EquipTool(tool)
+  end
+
+  return tool
+ end
+
+ local alive=true
+
+ gui.Destroying:Connect(function()
+  alive=false
+  cfg.Enabled=false
+ end)
+
+ task.spawn(function()
+  while alive do
+   task.wait(cfg.AttackDelay)
+
+   if cfg.Enabled then
+    local char,hum,root=getCharacter()
+
+    if char then
+     local target=findEnemy(root.Position)
+
+     if target then
+      local offset=cfg.Mode=="Farm Distance"
+       and cfg.Distance or 8
+
+      local delta=root.Position-target.Position
+
+      if delta.Magnitude<0.1 then
+       delta=Vector3.new(0,0,1)
+      end
+
+      local destination=target.Position+
+       delta.Unit*offset
+
+      local distance=(root.Position-target.Position).Magnitude
+
+      if distance>offset+3 then
+       hum:MoveTo(destination)
+      else
+       hum:MoveTo(root.Position)
+      end
+
+      local tool=equip(char,hum)
+
+      if tool and tool.Parent==char and distance<=20 then
+       pcall(function()
+        tool:Activate()
+       end)
+      end
+
+      status.Text=cfg.Mode.." | "..target.Parent.Name
+     else
+      status.Text="Waiting for enemies..."
+     end
+    end
+   end
+  end
+ end)
+
+ print("LEX_FARM_READY")
+end
+]==]
