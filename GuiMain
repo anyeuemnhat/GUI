@@ -1,161 +1,247 @@
 repeat task.wait() until game:IsLoaded()
 
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local ROOT="https://raw.githubusercontent.com/anyeuemnhat/GUI/"
 
-repeat task.wait() until player
+local music=[==[
+if not gui:GetAttribute("LexMusicV1") then
+ gui:SetAttribute("LexMusicV1",true)
 
-local ROOT =
-    "https://raw.githubusercontent.com/anyeuemnhat/GUI/main/"
+ local songs={
+  {name="Mùa thu và lời xin lỗi",id="120649823040872"}
+ }
 
-local ok, err = pcall(function()
-    loadstring(game:HttpGet(ROOT .. "GuiMain"))()
-end)
+ local selected,opened,alive,requested,ticket=1,false,true,false,0
 
-if not ok then
-    warn("Lex Hub GUI: " .. tostring(err))
-    return
+ local sound=new("Sound",{
+  Name="LexHubMusic",
+  SoundId="rbxassetid://"..songs[1].id,
+  Volume=.5,
+  Looped=false,
+ },game:GetService("SoundService"))
+
+ gui.Destroying:Connect(function()
+  alive=false
+  requested=false
+  ticket=ticket+1
+  sound:Stop()
+  sound:Destroy()
+ end)
+
+ local heading=label(pages.Settings,"Nghe nhạc",16,
+  UDim2.new(),UDim2.new(1,0,0,30),C.accent)
+ heading.LayoutOrder=-20
+
+ local panel=card(pages.Settings,224)
+ panel.Name="LexMusicPanel"
+ panel.LayoutOrder=-19
+ panel.BackgroundTransparency=.6
+
+ label(panel,"Danh sách bài nhạc",14,
+  UDim2.fromOffset(18,12),UDim2.new(1,-36,0,22),C.muted)
+
+ local selector=new("TextButton",{
+  Name="LexMusicSelector",
+  Position=UDim2.fromOffset(18,43),
+  Size=UDim2.new(1,-36,0,40),
+  BackgroundColor3=C.base,
+  BackgroundTransparency=.12,
+  BorderSizePixel=0,
+  Text=songs[1].name.."  v",
+  TextSize=15,
+  TextColor3=C.text,
+  Font=Enum.Font.Gotham,
+ },panel)
+ corner(selector,9)
+ border(selector)
+
+ local listHeight=math.min(#songs*42+8,176)
+
+ local list=new("ScrollingFrame",{
+  Name="LexMusicList",
+  Position=UDim2.fromOffset(18,89),
+  Size=UDim2.new(1,-36,0,listHeight),
+  BackgroundColor3=C.base,
+  BackgroundTransparency=.08,
+  BorderSizePixel=0,
+  Visible=false,
+  CanvasSize=UDim2.new(),
+  AutomaticCanvasSize=Enum.AutomaticSize.Y,
+  ScrollBarThickness=2,
+  ScrollBarImageColor3=C.accent,
+  ScrollingDirection=Enum.ScrollingDirection.Y,
+ },panel)
+ corner(list,9)
+
+ new("UIListLayout",{
+  Padding=UDim.new(0,4),
+  SortOrder=Enum.SortOrder.LayoutOrder,
+ },list)
+
+ new("UIPadding",{
+  PaddingTop=UDim.new(0,4),
+  PaddingLeft=UDim.new(0,4),
+  PaddingRight=UDim.new(0,4),
+  PaddingBottom=UDim.new(0,4),
+ },list)
+
+ local controls=new("Frame",{
+  Position=UDim2.fromOffset(18,101),
+  Size=UDim2.new(1,-36,0,38),
+  BackgroundTransparency=1,
+ },panel)
+
+ local status=label(panel,"Chưa phát nhạc.",13,
+  UDim2.fromOffset(18,152),UDim2.new(1,-36,0,54),C.muted)
+ status.TextWrapped=true
+ status.TextTruncate=Enum.TextTruncate.None
+ status.TextYAlignment=Enum.TextYAlignment.Top
+
+ local function layout()
+  local extra=opened and listHeight+8 or 0
+  list.Visible=opened
+  panel.Size=UDim2.new(1,-2,0,224+extra)
+  controls.Position=UDim2.fromOffset(18,101+extra)
+  status.Position=UDim2.fromOffset(18,152+extra)
+ end
+
+ local function stop(message)
+  ticket=ticket+1
+  requested=false
+  sound:Stop()
+  status.Text=message or "Đã dừng. Bấm Phát để nghe lại từ đầu."
+ end
+
+ on(selector.Activated,function()
+  opened=not opened
+  layout()
+ end)
+
+ for i,song in ipairs(songs) do
+  local option=new("TextButton",{
+   Name="LexMusicOption"..i,
+   LayoutOrder=i,
+   Size=UDim2.new(1,-3,0,38),
+   BackgroundColor3=C.card,
+   BackgroundTransparency=.2,
+   BorderSizePixel=0,
+   Text=song.name,
+   TextColor3=C.text,
+   TextSize=14,
+   Font=Enum.Font.Gotham,
+  },list)
+  corner(option,7)
+
+  on(option.Activated,function()
+   if selected~=i then
+    stop("Đã chọn: "..song.name)
+    selected=i
+    sound.SoundId="rbxassetid://"..song.id
+   end
+   selector.Text=song.name.."  v"
+   opened=false
+   layout()
+  end)
+ end
+
+ local function button(name,title,index)
+  local b=new("TextButton",{
+   Name=name,
+   Position=UDim2.new((index-1)/3,0,0,0),
+   Size=UDim2.new(1/3,-7,1,0),
+   BackgroundColor3=C.card,
+   BackgroundTransparency=.12,
+   BorderSizePixel=0,
+   Text=title,
+   TextColor3=C.text,
+   TextSize=14,
+   Font=Enum.Font.GothamBold,
+  },controls)
+  corner(b,9)
+  border(b)
+  return b
+ end
+
+ local play=button("LexMusicPlay","Phát",1)
+ local halt=button("LexMusicStop","Dừng",2)
+ local loop=button("LexMusicLoop","Lặp: Tắt",3)
+
+ on(play.Activated,function()
+  if requested and sound.Playing then return end
+
+  requested=true
+  ticket=ticket+1
+  local current=ticket
+
+  local ok,err=pcall(function() sound:Play() end)
+  if not ok then
+   requested=false
+   status.Text="Không phát được: "..tostring(err)
+   return
+  end
+
+  status.Text=sound.IsLoaded
+   and ("Đang phát: "..songs[selected].name)
+   or "Đang tải nhạc..."
+
+  task.delay(25,function()
+   if alive and requested and ticket==current and not sound.IsLoaded then
+    stop("Chưa tải được audio. Kiểm tra trạng thái/quyền dùng audio trong game hoặc thử lại.")
+   end
+  end)
+ end)
+
+ on(halt.Activated,function()
+  stop()
+ end)
+
+ on(loop.Activated,function()
+  sound.Looped=not sound.Looped
+  loop.Text=sound.Looped and "Lặp: Bật" or "Lặp: Tắt"
+  loop.BackgroundColor3=sound.Looped and C.accent or C.card
+  loop.TextColor3=sound.Looped and C.base or C.text
+ end)
+
+ on(sound.Loaded,function()
+  if alive and requested and sound.IsLoaded then
+   status.Text="Đang phát: "..songs[selected].name
+  end
+ end)
+
+ on(sound.Ended,function()
+  if alive and not sound.Looped then
+   requested=false
+   ticket=ticket+1
+   status.Text="Đã hết bài. Bấm Phát để nghe lại."
+  end
+ end)
+
+ layout()
+ print("LEX_MUSIC_READY")
 end
+]==]
 
-local parent = player:WaitForChild("PlayerGui")
+local success,err=pcall(function()
+ local base=game:HttpGet(
+  ROOT.."a0c08548318a84b4fd07014db7caedd6c7c86e38/GuiMain"
+ )
+ local settings=game:HttpGet(
+  ROOT.."c49f776d74a651790495909619ef674f52655e9a/GuiMain"
+ )
 
-if type(gethui) == "function" then
-    local success, result = pcall(gethui)
-    if success and result then
-        parent = result
-    end
+ local run,compileError=loadstring(
+  base.."\n"..settings.."\n"..music
+ )
+ assert(run,compileError)
+ run()
+end)
+
+if not success then
+ warn("[Lex Hub] "..tostring(err))
+ pcall(function()
+  game:GetService("StarterGui"):SetCore("SendNotification",{
+   Title="Lex Hub: error",
+   Text=tostring(err):sub(1,150),
+   Duration=12,
+  })
+ end)
 end
-
-local old = parent:FindFirstChild("LexFarmLibrary")
-if old then old:Destroy() end
-
-local config = getgenv().LexFarm or {}
-config.Enabled = false
-config.Mode = config.Mode or "Farm LV"
-config.FarmDistance = config.FarmDistance or {}
-config.FarmAura = config.FarmAura or {}
-config.FarmDistance.Distance = 20
-config.FarmAura.Radius = 100
-
-getgenv().LexFarm = config
-
-local gui = Instance.new("ScreenGui")
-gui.Name = "LexFarmLibrary"
-gui.ResetOnSpawn = false
-gui.Parent = parent
-
-local frame = Instance.new("Frame")
-frame.Name = "FarmWindow"
-frame.Size = UDim2.fromOffset(300, 310)
-frame.Position = UDim2.new(.5, -150, .5, -155)
-frame.BackgroundColor3 = Color3.fromRGB(18, 25, 37)
-frame.Parent = gui
-
-Instance.new("UICorner", frame).CornerRadius =
-    UDim.new(0, 14)
-
-local scale = Instance.new("UIScale")
-scale.Parent = frame
-
-local camera = workspace.CurrentCamera
-if camera then
-    local v = camera.ViewportSize
-    scale.Scale = math.min(
-        1,
-        (v.X - 20) / 300,
-        (v.Y - 20) / 310
-    )
-end
-
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 8)
-layout.HorizontalAlignment =
-    Enum.HorizontalAlignment.Center
-layout.Parent = frame
-
-local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0, 12)
-padding.Parent = frame
-
-local function makeButton(title, callback)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1, -24, 0, 43)
-    b.BackgroundColor3 =
-        Color3.fromRGB(35, 48, 65)
-    b.TextColor3 = Color3.new(1, 1, 1)
-    b.TextSize = 15
-    b.Font = Enum.Font.GothamBold
-    b.Text = title
-    b.Parent = frame
-
-    Instance.new("UICorner", b).CornerRadius =
-        UDim.new(0, 9)
-
-    b.Activated:Connect(function()
-        callback(b)
-    end)
-
-    return b
-end
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -20, 0, 34)
-title.BackgroundTransparency = 1
-title.Text = "LEX HUB | AUTO FARM"
-title.TextColor3 = Color3.fromRGB(132, 190, 226)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 19
-title.Parent = frame
-
-local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -20, 0, 28)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.new(1, 1, 1)
-status.TextSize = 13
-status.Text = "Status: OFF"
-status.Parent = frame
-
-local function start(mode)
-    config.Mode = mode
-    config.Enabled = true
-    status.Text = "Selected: " .. mode
-end
-
-makeButton("Farm LV", function()
-    start("Farm LV")
-end)
-
-makeButton("Farm Distance", function()
-    start("Farm Distance")
-end)
-
-makeButton("Farm Aura", function()
-    start("Farm Aura")
-end)
-
-makeButton("STOP FARM", function()
-    config.Enabled = false
-    status.Text = "Status: OFF"
-end)
-
-local open = makeButton("CLOSE / OPEN", function()
-    frame.Visible = false
-end)
-
-local dock = Instance.new("TextButton")
-dock.Size = UDim2.fromOffset(85, 38)
-dock.Position = UDim2.fromOffset(10, 70)
-dock.BackgroundColor3 = Color3.fromRGB(35, 48, 65)
-dock.TextColor3 = Color3.new(1, 1, 1)
-dock.Text = "FARM"
-dock.TextSize = 16
-dock.Parent = gui
-
-Instance.new("UICorner", dock).CornerRadius =
-    UDim.new(0, 10)
-
-dock.Activated:Connect(function()
-    frame.Visible = not frame.Visible
-end)
-
-print("LEX FARM LIBRARY READY")
