@@ -789,3 +789,8 @@ if not ok then
   })
  end)
 end
+task.defer(function()
+    loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/anyeuemnhat/GUI/refs/heads/main/LexBrandFix.lua"
+    ))()
+end)
